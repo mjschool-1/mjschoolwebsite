@@ -1,0 +1,6 @@
+{
+  "name": "MJ School - Kalyan",
+  "description": "Official website for MJ School, inspired by BK Birla Public School Kalyan, featuring Visiting Hours, Fee Structure, Grades, and School Overview.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
