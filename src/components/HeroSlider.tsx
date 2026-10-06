@@ -12,9 +12,9 @@ export const HeroSlider: React.FC<HeroSliderProps> = () => {
       {/* Background Hero Banner Frame: Aspect Ratio matched to 535x378 (mobile) & 1920x640 (desktop) */}
       <div className="relative w-full aspect-[535/378] md:aspect-[1920/640] overflow-hidden">
         <picture className="w-full h-full block">
-          <source media="(min-width: 768px)" srcSet="/hero-desktop.png" />
+          <source media="(min-width: 768px)" srcSet={`${import.meta.env.BASE_URL}hero-desktop.png`} />
           <img
-            src="/hero-mobile.png"
+            src={`${import.meta.env.BASE_URL}hero-mobile.png`}
             alt="MJ School Banner"
             className="w-full h-full object-cover"
           />

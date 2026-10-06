@@ -25,7 +25,7 @@ export const Logo: React.FC<LogoProps> = ({
       {/* Official MJ School Emblem Logo Image */}
       <div className="relative shrink-0 flex items-center justify-center">
         <img
-          src="/logo.png"
+          src={`${import.meta.env.BASE_URL}logo.png`}
           alt="MJ School Logo"
           className={`${currentSize.img} object-contain drop-shadow-md hover:scale-105 transition-transform duration-300`}
         />
