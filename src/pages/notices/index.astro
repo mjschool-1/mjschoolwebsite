@@ -1,0 +1,142 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { NOTICES_LIST } from '../../data/schoolData';
+import { FileText, Download, Bell, Calendar, Search, Filter } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'Notices' },
+];
+
+const allNotices = [
+  ...NOTICES_LIST,
+  {
+    id: 6,
+    title: 'Schedule for Term I Practical & Assessment Evaluation',
+    date: 'Sep 02, 2025',
+    category: 'Exams',
+    isNew: false,
+  },
+  {
+    id: 7,
+    title: 'Advisory on Monsoon Precautionary School Bus Commute',
+    date: 'Aug 24, 2025',
+    category: 'Circular',
+    isNew: false,
+  },
+  {
+    id: 8,
+    title: 'Inter-School Science Olympiad 2025: List of Selected Candidates',
+    date: 'Aug 15, 2025',
+    category: 'Academic',
+    isNew: false,
+  },
+];
+---
+
+<PublicLayout
+  title="Notice Board & Circulars | MJ School Shahpur"
+  description="Official administrative notices, examination schedules, and academic circulars from MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Official Notice Board & Circulars"
+  pageSubtitle="Stay informed with authentic circulars, examination schedules, academic notifications, and holiday declarations."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      {/* Notice Board Search & Category Bar */}
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-8">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <Bell class="w-5 h-5 text-[#C59B27]" />
+            <h2 class="text-base font-bold font-serif text-[#0B2545]">
+              Latest Circulars Archive
+            </h2>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="px-3 py-1 rounded-full font-bold bg-[#0B2545] text-white">All Circulars</span>
+            <span class="px-3 py-1 rounded-full font-semibold bg-white border border-slate-200 text-slate-700">Admissions</span>
+            <span class="px-3 py-1 rounded-full font-semibold bg-white border border-slate-200 text-slate-700">Exams</span>
+            <span class="px-3 py-1 rounded-full font-semibold bg-white border border-slate-200 text-slate-700">Circulars</span>
+            <span class="px-3 py-1 rounded-full font-semibold bg-white border border-slate-200 text-slate-700">Sports</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Notices Table */}
+      <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-12">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#0B2545] text-white uppercase text-[11px] font-bold tracking-wider">
+              <tr>
+                <th class="py-3.5 px-4 sm:px-6">Date</th>
+                <th class="py-3.5 px-4 sm:px-6">Category</th>
+                <th class="py-3.5 px-4 sm:px-6">Title &amp; Reference</th>
+                <th class="py-3.5 px-4 sm:px-6 text-right">Document</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700 font-medium">
+              {allNotices.map((notice) => (
+                <tr class="hover:bg-amber-50/40 transition-colors">
+                  <td class="py-4 px-4 sm:px-6 whitespace-nowrap text-slate-500 font-sans">
+                    <div class="flex items-center gap-1.5">
+                      <Calendar class="w-3.5 h-3.5 text-[#C59B27]" />
+                      <span>{notice.date}</span>
+                    </div>
+                  </td>
+                  <td class="py-4 px-4 sm:px-6 whitespace-nowrap">
+                    <span class="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-[#0B2545]">
+                      {notice.category}
+                    </span>
+                  </td>
+                  <td class="py-4 px-4 sm:px-6">
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-[#0B2545] text-xs sm:text-sm">
+                        {notice.title}
+                      </span>
+                      {notice.isNew && (
+                        <span class="bg-emerald-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">
+                          New
+                        </span>
+                      )}
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">
+                      Ref: MJS/NOT/2025-26/0{notice.id}
+                    </p>
+                  </td>
+                  <td class="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] font-bold px-3 py-1.5 rounded transition-all cursor-pointer text-xs"
+                      title="Download Circular PDF"
+                    >
+                      <Download class="w-3.5 h-3.5" />
+                      <span>PDF</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Verification Notice */}
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <p class="font-bold text-[#0B2545]">Official Dissemination Note:</p>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            All circulars published here are authenticated by the School Office. For emergency weather advisories, SMS and ERP app broadcasts will be deployed simultaneously.
+          </p>
+        </div>
+        <a
+          href="/faqs/"
+          class="shrink-0 text-xs font-bold text-[#C59B27] hover:underline"
+        >
+          Read FAQs &amp; Helpdesk &rarr;
+        </a>
+      </div>
+
+    </div>
+  </div>
+</PublicLayout>

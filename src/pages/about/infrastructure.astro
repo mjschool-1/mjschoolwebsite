@@ -1,0 +1,119 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { Building2, Sun, Shield, Bus, Wind, Wifi } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'About Us', href: '/about/principals-message/' },
+  { label: 'Infrastructure' },
+];
+
+const highlights = [
+  {
+    icon: Building2,
+    title: '10-Acre Learning Sanctuary',
+    desc: 'Sprawling green campus designed with modern educational architecture, expansive courtyards, and natural ventilation.',
+  },
+  {
+    icon: Sun,
+    title: 'Eco-Friendly & Solar Powered',
+    desc: 'Dedicated solar installations, rainwater harvesting plants, and zero-plastic campus guidelines supporting environmental sustainability.',
+  },
+  {
+    icon: Shield,
+    title: '24/7 Monitored Campus Security',
+    desc: 'Comprehensive CCTV coverage across all corridors, entry gates, and grounds with trained security personnel and RFID attendance.',
+  },
+  {
+    icon: Bus,
+    title: 'Safe GPS-Enabled Transport',
+    desc: 'Fleet of modern buses equipped with speed governors, CCTV cameras, GPS tracking, and female attendants covering all major routes.',
+  },
+  {
+    icon: Wifi,
+    title: 'Digital Smart Classrooms',
+    desc: 'High-speed fiber connectivity, interactive smart panels, multimedia visualizers, and acoustically treated learning spaces.',
+  },
+  {
+    icon: Wind,
+    title: 'Hygienic Dining & Pure Water',
+    desc: 'Multi-stage RO drinking water plants on every floor, modern sanitation facilities, and nutritious cafeteria services.',
+  },
+];
+---
+
+<PublicLayout
+  title="Campus Infrastructure | MJ School Shahpur"
+  description="Explore the 10-acre world-class campus infrastructure of MJ School, Shahpur featuring smart classrooms, green architecture, and monitored security."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Campus Infrastructure"
+  pageSubtitle="State-of-the-art facilities designed to provide a safe, sustainable, and intellectually vibrant learning sanctuary."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      {/* Visual Hero Feature */}
+      <div class="relative rounded-2xl overflow-hidden shadow-xl border-4 border-slate-100 mb-12">
+        <img
+          src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1600&q=80"
+          alt="MJ School Shahpur Campus Aerial View"
+          class="w-full h-80 sm:h-96 object-cover"
+        />
+        <div class="absolute inset-0 bg-gradient-to-t from-[#0B2545]/90 via-[#0B2545]/40 to-transparent flex items-end p-6 sm:p-10">
+          <div class="text-white max-w-2xl">
+            <span class="inline-block bg-[#C59B27] text-[#0B2545] font-black text-xs uppercase px-3 py-1 rounded shadow-sm mb-2">
+              Modern Campus Architecture
+            </span>
+            <h2 class="text-xl sm:text-3xl font-bold font-serif text-white">
+              An Inspiring Physical & Digital Learning Ecosystem
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-200 mt-1">
+              Thoughtfully built to inspire creativity, foster collaboration, and guarantee maximum safety for every student.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Infrastructure Feature Cards Grid */}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        {highlights.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all group">
+              <div class="w-12 h-12 rounded-lg bg-blue-100 text-[#0B2545] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#C59B27] group-hover:text-white transition-all">
+                <Icon class="w-6 h-6" />
+              </div>
+              <h3 class="font-bold text-base text-[#0B2545] font-serif mb-2">
+                {item.title}
+              </h3>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                {item.desc}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Safety & Compliance Banner */}
+      <div class="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+          <span class="text-xs text-[#F6D55C] font-bold uppercase tracking-wider block mb-1">
+            Student Safety First
+          </span>
+          <h3 class="text-lg sm:text-xl font-bold font-serif">
+            Full Compliance with CBSE Safety & Disaster Management Guidelines
+          </h3>
+          <p class="text-xs text-slate-300 mt-1 max-w-2xl">
+            Bi-annual fire safety audits, structural stability certification, dedicated medical first-aid room, and regular evacuation drills.
+          </p>
+        </div>
+        <a
+          href="/facilities/"
+          class="shrink-0 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold text-xs uppercase px-5 py-2.5 rounded-lg shadow-md transition-all"
+        >
+          View Campus Facilities
+        </a>
+      </div>
+
+    </div>
+  </div>
+</PublicLayout>

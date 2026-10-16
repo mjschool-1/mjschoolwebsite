@@ -1,49 +1,28 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import { TopBar } from '../components/TopBar';
-import { Header } from '../components/Header';
-import { Navbar } from '../components/Navbar';
-import { HeroSlider, FlashNews } from '../components/HeroSlider';
+import PublicLayout from '../layouts/PublicLayout.astro';
+import { HeroSlider } from '../components/HeroSlider';
 import { AboutSchoolSection } from '../components/AboutSchoolSection';
 import { FeeStructureSection } from '../components/FeeStructureSection';
 import { NoticeBoardAndEvents } from '../components/NoticeBoardAndEvents';
 import { AdmissionsSection } from '../components/AdmissionsSection';
-import { Footer } from '../components/Footer';
 ---
 
-<BaseLayout title="MJ School - Shahpur | Affiliated to CBSE">
-  {/* 1. Top Utility Info Bar */}
-  <TopBar client:idle />
+<PublicLayout title="MJ School - Shahpur | Affiliated to CBSE">
+  {/* Hero Banner */}
+  <section id="home">
+    <HeroSlider />
+  </section>
 
-  {/* 2. Main Header with School Crest and Search Bar */}
-  <Header client:idle />
+  {/* About School Section */}
+  <AboutSchoolSection />
 
-  {/* 3. Primary Sticky Navigation Bar with Dropdown Menus */}
-  <Navbar client:load />
+  {/* Fee Structure Section */}
+  <FeeStructureSection client:visible />
 
-  {/* 4. Live Circulars Marquee / Flash News */}
-  <FlashNews client:idle />
+  {/* Circulars, Notices & Student Hall of Fame */}
+  <NoticeBoardAndEvents client:visible />
 
-  {/* Main Content Area */}
-  <main class="flex-1">
-    {/* 5. Hero Banner */}
-    <section id="home">
-      <HeroSlider />
-    </section>
+  {/* Admissions & Online Registration Form */}
+  <AdmissionsSection client:visible />
+</PublicLayout>
 
-    {/* 6. About School Section */}
-    <AboutSchoolSection />
-
-    {/* 7. Fee Structure Section */}
-    <FeeStructureSection client:visible />
-
-    {/* 8. Circulars, Notices & Student Hall of Fame */}
-    <NoticeBoardAndEvents client:visible />
-
-    {/* 9. Admissions 2025-26 & Online Registration Form */}
-    <AdmissionsSection client:visible />
-  </main>
-
-  {/* 10. Comprehensive Footer */}
-  <Footer client:idle />
-</BaseLayout>

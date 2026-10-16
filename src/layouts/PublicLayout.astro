@@ -1,0 +1,90 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { TopBar } from '../components/TopBar';
+import { Header } from '../components/Header';
+import { Navbar } from '../components/Navbar';
+import { FlashNews } from '../components/HeroSlider';
+import { Footer } from '../components/Footer';
+
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  title?: string;
+  description?: string;
+  breadcrumbs?: BreadcrumbItem[];
+  pageTitle?: string;
+  pageSubtitle?: string;
+}
+
+const {
+  title = "MJ School - Shahpur | Affiliated to CBSE",
+  description = "Official website for MJ School, Shahpur. Premier co-educational CBSE institution.",
+  breadcrumbs,
+  pageTitle,
+  pageSubtitle,
+} = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  {/* 1. Top Utility Contact Bar */}
+  <TopBar client:idle />
+
+  {/* 2. Main Header with School Crest and Search Bar */}
+  <Header client:idle />
+
+  {/* 3. Primary Sticky Navigation Bar */}
+  <Navbar client:load />
+
+  {/* 4. Live Circulars Marquee / Flash News */}
+  <FlashNews client:idle />
+
+  {/* 5. Subpage Banner & Breadcrumb Hierarchy */}
+  {pageTitle && (
+    <div class="bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {breadcrumbs && breadcrumbs.length > 0 && (
+          <nav aria-label="Breadcrumb" class="mb-3">
+            <ol class="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <li>
+                <a href="/" class="hover:text-[#F6D55C] transition-colors flex items-center gap-1">
+                  <span>Home</span>
+                </a>
+              </li>
+              {breadcrumbs.map((crumb) => (
+                <li class="flex items-center gap-2">
+                  <span class="text-slate-500 font-bold">›</span>
+                  {crumb.href ? (
+                    <a href={crumb.href} class="hover:text-[#F6D55C] transition-colors">
+                      {crumb.label}
+                    </a>
+                  ) : (
+                    <span class="text-[#F6D55C] font-semibold">{crumb.label}</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
+        <h1 class="text-2xl sm:text-4xl font-extrabold font-serif tracking-tight text-white drop-shadow-sm">
+          {pageTitle}
+        </h1>
+        {pageSubtitle && (
+          <p class="mt-2 text-xs sm:text-sm text-slate-200 max-w-3xl leading-relaxed">
+            {pageSubtitle}
+          </p>
+        )}
+      </div>
+    </div>
+  )}
+
+  {/* Main Content Slot */}
+  <main class="flex-1">
+    <slot />
+  </main>
+
+  {/* Comprehensive Footer */}
+  <Footer client:idle />
+</BaseLayout>

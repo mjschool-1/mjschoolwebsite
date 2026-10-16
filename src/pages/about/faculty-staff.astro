@@ -1,0 +1,151 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { Users, GraduationCap, Award, BookCheck, Sparkles } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'About Us', href: '/about/principals-message/' },
+  { label: 'Faculty & Staff' },
+];
+
+const facultyStats = [
+  { label: 'Student-Teacher Ratio', value: '15 : 1', desc: 'Ensuring personalized academic attention for every learner.' },
+  { label: 'Post-Graduate Educators', value: '85%+', desc: 'Highly qualified master degree holders and CBSE certified mentors.' },
+  { label: 'Average Teaching Experience', value: '12+ Yrs', desc: 'Seasoned educators bringing deep pedagogical insight to classrooms.' },
+  { label: 'Annual Training Hours', value: '50+ Hrs', desc: 'Mandatory CBSE Capacity Building & NEP skill enrichment programs.' },
+];
+
+const departments = [
+  {
+    name: 'Senior Secondary Science Wing',
+    head: 'Department Head & Senior Lecturers',
+    desc: 'Specialized mentors across Physics, Chemistry, Biology, and Applied Mathematics with integrated prep orientation.',
+    subjects: ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science (Python)'],
+  },
+  {
+    name: 'Commerce & Humanities Wing',
+    head: 'Senior Faculty & Research Mentors',
+    desc: 'Fostering critical economic analysis, financial accounting literacy, business administration, and social sciences.',
+    subjects: ['Accountancy', 'Economics', 'Business Studies', 'History', 'Political Science'],
+  },
+  {
+    name: 'Secondary & Middle School Wing',
+    head: 'Grade Coordinators & Subject Specialists',
+    desc: 'Nurturing logical inquiry, linguistic mastery, and foundational scientific concepts through interactive smart classroom sessions.',
+    subjects: ['English', 'Mathematics', 'General Science', 'Social Science', 'Hindi', 'Sanskrit'],
+  },
+  {
+    name: 'Foundational & Primary Wing',
+    head: 'Early Childhood & Primary Educators',
+    desc: 'Compassionate educators trained in Montessori kits, play-way methodologies, phonetics, and activity-based learning.',
+    subjects: ['Phonics & Reading', 'Early Math', 'Environmental Studies', 'Visual Arts', 'Storytelling'],
+  },
+  {
+    name: 'Sports & Co-Curricular Department',
+    head: 'Physical Education Instructors & NIS Coaches',
+    desc: 'Dedicated trainers in athletics, football, basketball, yoga, performing arts, classical music, and theater.',
+    subjects: ['Physical Education', 'Athletics & Track', 'Yoga & Wellness', 'Classical Dance', 'Vocal Music'],
+  },
+];
+---
+
+<PublicLayout
+  title="Faculty & Staff | MJ School Shahpur"
+  description="Meet the experienced educators, mentors, and academic leadership team guiding scholars at MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Our Faculty & Academic Mentors"
+  pageSubtitle="Dedicated educators committed to igniting intellect, nurturing compassion, and mentoring future champions."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      {/* Overview Stat Counters */}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+        {facultyStats.map((stat) => (
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 text-center">
+            <span class="text-3xl font-black text-[#0B2545] font-serif block mb-1">
+              {stat.value}
+            </span>
+            <span class="text-xs font-bold text-[#C59B27] uppercase tracking-wider block mb-1">
+              {stat.label}
+            </span>
+            <p class="text-[11px] text-slate-500 leading-snug">
+              {stat.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Faculty Philosophy & Mentorship */}
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mb-12">
+        <div class="lg:col-span-7 space-y-4 text-slate-700 text-sm leading-relaxed">
+          <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545]">
+            Compassionate Guidance Rooted in Academic Rigor
+          </h2>
+          <p>
+            At MJ School, Shahpur, teachers are much more than classroom instructors. They are empathetic mentors, scientific guides, and ethical role models who identify the unique learning curve of every scholar.
+          </p>
+          <p>
+            Our faculty members participate in continuous CBSE Capacity Building Workshops, modern pedagogical seminars, and educational psychology training to ensure our teaching methodologies evolve with global best practices.
+          </p>
+          <div class="flex items-center gap-4 pt-2">
+            <div class="flex items-center gap-2 text-xs font-semibold text-[#0B2545]">
+              <BookCheck class="w-4 h-4 text-[#C59B27]" />
+              <span>Continuous Assessment</span>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-[#0B2545]">
+              <Sparkles class="w-4 h-4 text-[#C59B27]" />
+              <span>Doubt Clearance Sessions</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-5">
+          <div class="rounded-2xl overflow-hidden shadow-lg border-4 border-slate-100">
+            <img
+              src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80"
+              alt="Faculty and Classroom Instruction"
+              class="w-full h-72 object-cover"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Department Structure Grid */}
+      <div class="mb-12">
+        <h3 class="text-lg font-bold font-serif text-[#0B2545] mb-6">
+          Academic Departments & Subject Faculties
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {departments.map((dept) => (
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 flex flex-col justify-between">
+              <div>
+                <h4 class="font-bold text-sm text-[#0B2545] font-serif mb-1">
+                  {dept.name}
+                </h4>
+                <p class="text-xs text-[#C59B27] font-semibold mb-2">
+                  {dept.head}
+                </p>
+                <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+                  {dept.desc}
+                </p>
+              </div>
+              <div class="pt-3 border-t border-slate-200">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Key Disciplines
+                </span>
+                <div class="flex flex-wrap gap-1">
+                  {dept.subjects.map((sub) => (
+                    <span class="text-[10px] font-medium bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                      {sub}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</PublicLayout>

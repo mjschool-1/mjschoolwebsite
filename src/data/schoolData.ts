@@ -5,28 +5,49 @@ export interface NavItem {
 }
 
 export const MAIN_NAV_ITEMS: NavItem[] = [
-  { name: 'Home', href: '#home' },
   {
     name: 'About Us',
-    href: '#about-school',
+    href: '/about/principals-message/',
     children: [
-      { name: 'About School', href: '#about-school' },
-      { name: 'Vision, Mission & Values', href: '#vision-mission' },
-      { name: "Principal's Message", href: '#principal-message' },
+      { name: "Principal's Message", href: '/about/principals-message/' },
+      { name: 'Infrastructure', href: '/about/infrastructure/' },
+      { name: 'Facilities', href: '/facilities/' },
+      { name: 'Faculty & Staff', href: '/about/faculty-staff/' },
     ],
   },
   {
-    name: 'Admissions',
-    href: '#admissions',
+    name: 'Academics',
+    href: '/academics/syllabus/',
     children: [
-      { name: 'Fee Structure', href: '#fee-structure' },
-      { name: 'Admission Procedure 2025-26', href: '#admissions' },
-      { name: 'Online Registration Form', href: '#admission-form' },
+      { name: 'Syllabus', href: '/academics/syllabus/' },
+      { name: 'Gallery', href: '/gallery/' },
+      { name: 'Events & Activities', href: '/academics/events-activities/' },
     ],
   },
-  { name: 'Notices and Circulars', href: '#notices' },
-  { name: 'Contact Us', href: '#contact' },
+  {
+    name: 'News & Notices',
+    href: '/notices/',
+    children: [
+      { name: 'Notice Board', href: '/notices/' },
+      { name: "FAQ's", href: '/faqs/' },
+      { name: 'Privacy Policy', href: '/privacy-policy/' },
+      { name: 'Terms & Conditions', href: '/terms-and-conditions/' },
+    ],
+  },
+  {
+    name: 'Fees & Payment Structure',
+    href: '/admissions/fee-structure/',
+    children: [
+      { name: 'Fee Payment 2026', href: '/admissions/fee-payment-2026/' },
+      { name: 'Fee Structure', href: '/admissions/fee-structure/' },
+    ],
+  },
 ];
+
+export const ADMISSIONS_CTA = {
+  name: 'Admissions 2026',
+  href: '/admissions/2026/',
+};
 
 export const FEE_STRUCTURE_DATA = [
   {

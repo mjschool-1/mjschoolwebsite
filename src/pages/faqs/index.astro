@@ -1,0 +1,139 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { HelpCircle, Phone, Mail, ChevronRight } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'News & Notices', href: '/notices/' },
+  { label: "FAQ's" },
+];
+
+const faqs = [
+  {
+    category: 'Admissions & Eligibility',
+    questions: [
+      {
+        q: 'What is the age criteria for Nursery and Grade I admissions for Session 2026-27?',
+        a: 'In strict alignment with the National Education Policy (NEP 2020) and state government directives, a child must be minimum 3 years of age for Nursery and minimum 6 years of age for Grade I admission as of 31st December of the commencement year.',
+      },
+      {
+        q: 'Is there an admission screening test or donation fee?',
+        a: 'No. MJ School strictly adheres to transparent, merit-based admission guidelines. There is no donation or capitation fee. For Pre-Primary to Grade V, admission is based on informal interaction. For Grade VI upwards, an age-appropriate aptitude evaluation is conducted to gauge reading and numerical proficiency.',
+      },
+      {
+        q: 'What mandatory documents are required at the time of admission verification?',
+        a: 'Parents must submit the Original Municipal Birth Certificate (countersigned for outstation applicants), Original School Leaving Certificate / Transfer Certificate (for Grade II upwards), Aadhaar Card copies of student and parents, previous academic progress report cards, and 3 passport-sized photographs.',
+      },
+    ],
+  },
+  {
+    category: 'Academics & Affiliation',
+    questions: [
+      {
+        q: 'Which education board is MJ School affiliated with?',
+        a: 'MJ School is affiliated with the Central Board of Secondary Education (CBSE), New Delhi, delivering an all-India curriculum from Pre-Primary through Senior Secondary (Grade XII).',
+      },
+      {
+        q: 'What streams are offered at the Senior Secondary (Grade XI & XII) level?',
+        a: 'We offer three comprehensive streams: Science (Physics, Chemistry, Mathematics / Biology, Computer Science), Commerce (Accountancy, Business Studies, Economics, Applied Mathematics), and Humanities (History, Political Science, Economics, Psychology / Literature).',
+      },
+      {
+        q: 'What is the average teacher-to-student ratio?',
+        a: 'We maintain a healthy 15:1 student-to-teacher ratio to ensure personalized academic mentorship, customized doubt clearance, and continuous formative assessment.',
+      },
+    ],
+  },
+  {
+    category: 'Transportation & Timings',
+    questions: [
+      {
+        q: 'Does the school provide dedicated bus transportation?',
+        a: 'Yes. MJ School operates a modern, GPS-enabled bus fleet with CCTV cameras, emergency speed governors, and trained female attendants covering designated arterial routes across Shahpur and neighboring zones.',
+      },
+      {
+        q: 'What are the official school hours?',
+        a: 'Pre-Primary (Nursery, Jr. KG, Sr. KG) operates from 08:45 AM to 12:30 PM. Primary to Senior Secondary classes operate from 08:00 AM to 02:30 PM (Monday through Friday, and alternate Saturdays for middle/senior grades).',
+      },
+    ],
+  },
+  {
+    category: 'Fees & Payment Modes',
+    questions: [
+      {
+        q: 'Can the annual fee be paid in quarterly installments?',
+        a: 'Yes. The school fee structure is divided into four quarterly installments due by April 10 (Q1), July 10 (Q2), October 10 (Q3), and January 10 (Q4).',
+      },
+      {
+        q: 'Is there a sibling concession policy?',
+        a: 'Yes, MJ School provides a 15% concession on tuition fees for the younger sibling studying concurrently in the school upon submission of verified enrollment records.',
+      },
+    ],
+  },
+];
+---
+
+<PublicLayout
+  title="Frequently Asked Questions (FAQs) | MJ School Shahpur"
+  description="Answers to common questions regarding admissions, CBSE curriculum, bus transport, age criteria, and school fees at MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Frequently Asked Questions"
+  pageSubtitle="Clear answers to parent questions regarding admissions, academic curricula, facilities, timings, and policies."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="space-y-10 max-w-4xl mx-auto mb-14">
+        {faqs.map((section) => (
+          <div>
+            <div class="border-b-2 border-[#C59B27] pb-2 mb-6">
+              <h2 class="text-lg font-bold font-serif text-[#0B2545] flex items-center gap-2">
+                <HelpCircle class="w-5 h-5 text-[#C59B27]" />
+                {section.category}
+              </h2>
+            </div>
+
+            <div class="space-y-4">
+              {section.questions.map((faq) => (
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition-colors">
+                  <h3 class="text-sm font-bold text-[#0B2545] mb-2 flex items-start gap-2">
+                    <span class="text-[#C59B27] font-black text-sm">Q.</span>
+                    <span>{faq.q}</span>
+                  </h3>
+                  <p class="text-xs text-slate-600 leading-relaxed pl-5 border-l-2 border-[#C59B27]/40 ml-1">
+                    {faq.a}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Still have questions card */}
+      <div class="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 max-w-4xl mx-auto text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div>
+          <h3 class="text-lg font-bold font-serif">
+            Still Have Questions?
+          </h3>
+          <p class="text-xs text-slate-300 mt-1">
+            Our Admission &amp; Information Helpdesk is open Monday to Saturday from 08:30 AM to 03:30 PM.
+          </p>
+          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-3 text-xs text-[#F6D55C] font-semibold">
+            <span class="flex items-center gap-1.5">
+              <Phone class="w-3.5 h-3.5" /> +91 251 2230001 / 2230002
+            </span>
+            <span class="flex items-center gap-1.5">
+              <Mail class="w-3.5 h-3.5" /> info@mjschoolkalyan.edu.in
+            </span>
+          </div>
+        </div>
+        <a
+          href="/admissions/2026/"
+          class="shrink-0 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold text-xs uppercase px-5 py-2.5 rounded-lg shadow-md transition-all"
+        >
+          Contact Admission Desk
+        </a>
+      </div>
+
+    </div>
+  </div>
+</PublicLayout>

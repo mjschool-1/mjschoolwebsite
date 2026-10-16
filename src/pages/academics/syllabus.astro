@@ -1,0 +1,147 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { BookOpen, FileCheck, Layers, Award, FileText, Download } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'Academics', href: '/academics/syllabus/' },
+  { label: 'Syllabus' },
+];
+
+const tiers = [
+  {
+    grade: 'Foundational Stage',
+    levels: 'Nursery, Jr. KG, Sr. KG, Grades I & II',
+    focus: 'Play-way pedagogy, language phonetics, numerical literacy, emotional expression, sensory discovery.',
+    subjects: ['English & Phonics', 'Number Work', 'Hindi / Regional Language', 'EVS & Storytelling', 'Music & Movement'],
+  },
+  {
+    grade: 'Preparatory Stage',
+    levels: 'Grades III to V',
+    focus: 'Building core concepts in language, mathematical logic, scientific curiosity, and collaborative group tasks.',
+    subjects: ['English', 'Mathematics', 'General Science', 'Social Studies', 'Second Language', 'Computer & Coding Basics'],
+  },
+  {
+    grade: 'Middle Stage',
+    levels: 'Grades VI to VIII',
+    focus: 'Experiential science, specialized laboratory exposure, critical reasoning, third language introduction.',
+    subjects: ['English Literature & Grammar', 'Mathematics', 'Integrated Science', 'Social Science', 'Hindi', 'Sanskrit', 'AI & Robotics'],
+  },
+  {
+    grade: 'Secondary Stage (CBSE)',
+    levels: 'Grades IX & X',
+    focus: 'Rigorous CBSE board syllabus, structured lab journals, periodic assessments, and career aptitude workshops.',
+    subjects: ['English Language & Literature', 'Mathematics (Standard / Basic)', 'Science (Phy/Chem/Bio)', 'Social Science', 'Hindi / Sanskrit', 'IT Skills'],
+  },
+  {
+    grade: 'Senior Secondary (Science)',
+    levels: 'Grades XI & XII',
+    focus: 'Intensive preparation for CBSE Board & competitive entrances (JEE / NEET / CUET) with high-end lab research.',
+    subjects: ['Physics', 'Chemistry', 'Mathematics / Biology', 'English Core', 'Computer Science / Physical Education'],
+  },
+  {
+    grade: 'Senior Secondary (Commerce & Humanities)',
+    levels: 'Grades XI & XII',
+    focus: 'Analytical accounting, macroeconomics, business management, human societies, and public policy.',
+    subjects: ['Accountancy', 'Business Studies', 'Economics', 'History / Political Science', 'English Core', 'Applied Mathematics'],
+  },
+];
+---
+
+<PublicLayout
+  title="Curriculum & Syllabus | MJ School Shahpur"
+  description="CBSE academic syllabus and curriculum breakdown for Pre-Primary to Grade XII at MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Academic Curriculum & Syllabus"
+  pageSubtitle="A progressive, CBSE-aligned curriculum cultivating deep conceptual understanding, scientific temper, and holistic capabilities."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      {/* NEP 2020 Framework Card */}
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 mb-12">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div class="space-y-2">
+            <span class="inline-block bg-[#C59B27] text-[#0B2545] text-[10px] font-black uppercase px-2.5 py-1 rounded">
+              NEP 2020 Aligned
+            </span>
+            <h2 class="text-xl font-bold font-serif text-[#0B2545]">
+              National Education Policy 5+3+3+4 Pedagogical Structure
+            </h2>
+            <p class="text-xs text-slate-600 max-w-3xl leading-relaxed">
+              Our curriculum seamlessly shifts from rote memorization toward inquiry-based learning, practical laboratory applications, creative problem-solving, and continuous formative assessment.
+            </p>
+          </div>
+          <div class="shrink-0 flex items-center gap-3">
+            <a
+              href="#syllabus-table"
+              class="bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+            >
+              Explore Grades
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Grade Tier Cards */}
+      <div id="syllabus-table" class="space-y-6 mb-12">
+        <h3 class="text-lg font-bold font-serif text-[#0B2545]">
+          Stage-Wise Academic Breakdown
+        </h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {tiers.map((tier) => (
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <span class="text-[10px] uppercase font-bold text-[#C59B27] tracking-wider block mb-1">
+                  {tier.levels}
+                </span>
+                <h4 class="text-base font-bold text-[#0B2545] font-serif mb-2">
+                  {tier.grade}
+                </h4>
+                <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+                  {tier.focus}
+                </p>
+              </div>
+
+              <div class="pt-3 border-t border-slate-100">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
+                  Core Subjects
+                </span>
+                <div class="flex flex-wrap gap-1">
+                  {tier.subjects.map((sub) => (
+                    <span class="text-[10px] bg-slate-50 border border-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                      {sub}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Assessment Guidelines */}
+      <div class="bg-gradient-to-r from-blue-50/60 to-slate-50 border border-blue-100 rounded-2xl p-6 sm:p-8">
+        <h3 class="text-base font-bold font-serif text-[#0B2545] mb-3 flex items-center gap-2">
+          <Award class="w-5 h-5 text-[#C59B27]" />
+          Evaluation &amp; Examination Pattern
+        </h3>
+        <p class="text-xs text-slate-600 leading-relaxed mb-4 max-w-4xl">
+          Students are evaluated through Continuous and Comprehensive Evaluation (CCE). The academic year comprises two terms with Periodic Tests (PT 1, PT 2, PT 3), Half-Yearly Examinations, and Annual / CBSE Pre-Board examinations. Internal assessment includes portfolio evaluation, laboratory notebooks, subject enrichment activities, and regular class participation.
+        </p>
+        <div class="flex flex-wrap gap-4 text-xs font-semibold text-[#0B2545]">
+          <span class="flex items-center gap-1.5">
+            <FileCheck class="w-4 h-4 text-emerald-600" /> Formative Quizzes &amp; Orals
+          </span>
+          <span class="flex items-center gap-1.5">
+            <FileCheck class="w-4 h-4 text-emerald-600" /> Lab Practical Portfolios
+          </span>
+          <span class="flex items-center gap-1.5">
+            <FileCheck class="w-4 h-4 text-emerald-600" /> CBSE Board Pattern Pre-Boards
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</PublicLayout>

@@ -1,0 +1,96 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { ShieldCheck, Info, FileText } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'News & Notices', href: '/notices/' },
+  { label: 'Privacy Policy' },
+];
+---
+
+<PublicLayout
+  title="Privacy Policy | MJ School Shahpur"
+  description="Website privacy policy and information disclosure guidelines for visitors and parents at MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Website Privacy Policy"
+  pageSubtitle="Guidelines governing the protection and handling of personal information collected through our school web portal."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-slate-700 text-sm leading-relaxed space-y-8">
+      
+      {/* Notice Banner */}
+      <div class="bg-amber-50 border-l-4 border-[#C59B27] p-5 rounded-r-xl text-xs text-amber-900">
+        <div class="flex items-start gap-2.5">
+          <Info class="w-4 h-4 text-[#C59B27] shrink-0 mt-0.5" />
+          <div>
+            <strong class="font-bold">Prototype / Informational Placeholder Notice:</strong>
+            <p class="mt-0.5">
+              The policy text set forth below represents an illustrative operational guideline for this website preview. The finalized, legally approved school data protection document is subject to formal ratification by the School Managing Committee (SMC).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          1. Information We Collect
+        </h2>
+        <p>
+          When you interact with the MJ School website (for example, while submitting an online admission enquiry, registering for event circulars, or making general inquiries), we may collect the following details:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-xs text-slate-600">
+          <li>Student details: Full name, date of birth, current grade, and previous school attended.</li>
+          <li>Parent / Guardian details: Name, email address, contact telephone numbers, and residential postal address.</li>
+          <li>Technical website logs: Standard anonymized browser metadata, IP address, and page interaction timestamps.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          2. Purpose of Information Use
+        </h2>
+        <p>
+          The personal data collected is utilized strictly for lawful educational and administrative functions, including:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-xs text-slate-600">
+          <li>Processing admission applications and scheduling parent interaction sessions.</li>
+          <li>Dispatching urgent academic circulars, examination schedules, and emergency transit updates.</li>
+          <li>Responding to parent queries and complaints submitted through the helpdesk.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          3. Confidentiality &amp; Third-Party Non-Disclosure
+        </h2>
+        <p>
+          MJ School does not sell, rent, or lease student or parental contact information to commercial advertising vendors or third-party marketing agencies. Data is disclosed only to verified institutional partners (such as the official School ERP vendor and the CBSE Board portal) under strict non-disclosure obligations, or when required by statutory authorities under applicable law.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          4. Security Measures
+        </h2>
+        <p>
+          We employ standard digital security measures, encrypted HTTPS transmission, and restricted role-based internal access to protect submitted records from unauthorized modification, interception, or loss.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          5. Contact for Privacy Matters
+        </h2>
+        <p>
+          For questions or updates regarding your submitted records, please contact the School Administrative Office:
+        </p>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-1 text-slate-600">
+          <p><strong>Office of the Administrator</strong></p>
+          <p>MJ School Campus, Shahpur, Maharashtra</p>
+          <p>Email: info@mjschoolkalyan.edu.in | Phone: +91 251 2230001</p>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</PublicLayout>

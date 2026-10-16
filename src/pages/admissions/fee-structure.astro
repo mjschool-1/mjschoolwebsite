@@ -1,0 +1,23 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { FeeStructureSection } from '../../components/FeeStructureSection';
+import { ShieldCheck, Info } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'Fees & Payment Structure', href: '/admissions/fee-structure/' },
+  { label: 'Fee Structure' },
+];
+---
+
+<PublicLayout
+  title="Fee Structure & Regulations | MJ School Shahpur"
+  description="Approved class-wise fee schedule, tuition rates, and interactive fee calculator for academic session 2026-27 at MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Fee Structure & Regulations"
+  pageSubtitle="Approved by the School Managing Committee (SMC) in adherence to the Maharashtra Educational Institutions (Regulation of Fee) Act."
+>
+  <div class="bg-white">
+    {/* Mount existing interactive Fee Structure & Calculator Section */}
+    <FeeStructureSection client:visible />
+  </div>
+</PublicLayout>

@@ -1,0 +1,85 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { FileText, AlertCircle, CheckCircle } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'News & Notices', href: '/notices/' },
+  { label: 'Terms & Conditions' },
+];
+---
+
+<PublicLayout
+  title="Terms & Conditions | MJ School Shahpur"
+  description="Website terms of use, intellectual property notes, and general online disclaimer for MJ School, Shahpur."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Website Terms & Conditions"
+  pageSubtitle="General guidelines governing access, content usage, and online communication on the MJ School web portal."
+>
+  <div class="py-12 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-slate-700 text-sm leading-relaxed space-y-8">
+      
+      {/* Disclaimer Notice */}
+      <div class="bg-amber-50 border-l-4 border-[#C59B27] p-5 rounded-r-xl text-xs text-amber-900">
+        <div class="flex items-start gap-2.5">
+          <AlertCircle class="w-4 h-4 text-[#C59B27] shrink-0 mt-0.5" />
+          <div>
+            <strong class="font-bold">Informational Preview Notice:</strong>
+            <p class="mt-0.5">
+              These terms provide general operational rules for accessing this website prototype. Official student code of conduct, disciplinary regulations, and examination bylaws are codified in the official Student School Diary issued at the start of each academic year.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          1. Acceptance of Terms
+        </h2>
+        <p>
+          By navigating and using the MJ School website, you acknowledge that you have read and agreed to these general terms of use. If you do not agree with any part of these operational guidelines, please refrain from using the online enquiry and portal features.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          2. Intellectual Property Rights
+        </h2>
+        <p>
+          The content published on this website—including the official MJ School emblem and crest, textual documentation, curriculum summaries, photographic assets, and layout design—is the intellectual property of MJ School, Shahpur. Unauthorized reproduction, scraping, commercial redistribution, or trademark infringement is strictly prohibited.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          3. Accuracy of Published Information
+        </h2>
+        <p>
+          While the school strives to maintain current circulars, fee breakdowns, and academic calendar dates on this website, all dates, examination schedules, and fee figures are subject to administrative revisions approved by the School Managing Committee (SMC) or mandated by the CBSE board. The physical circulars distributed by the school office shall remain the primary source of truth.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          4. Online Form Submissions
+        </h2>
+        <p>
+          Submitting an online registration or admission enquiry form does not constitute guaranteed admission or enrollment. Admissions are granted strictly upon manual document verification, age eligibility verification, and completion of institutional formalities within designated timelines.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-lg font-bold font-serif text-[#0B2545] border-b border-slate-200 pb-2">
+          5. External Web Links
+        </h2>
+        <p>
+          This website may contain hyperlinks to external educational boards (such as cbse.gov.in) or institutional portals. MJ School exercises no editorial control over the availability or content of external third-party servers.
+        </p>
+      </section>
+
+      <div class="pt-4 border-t border-slate-200 text-xs text-slate-500">
+        <p>Last Updated: October 2026 | Document Reference: MJS/TERMS/2026-A</p>
+      </div>
+
+    </div>
+  </div>
+</PublicLayout>

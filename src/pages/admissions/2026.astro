@@ -1,0 +1,23 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import { AdmissionsSection } from '../../components/AdmissionsSection';
+import { Sparkles, Calendar, CheckCircle2, FileText, Phone, Mail } from 'lucide-react';
+
+const breadcrumbs = [
+  { label: 'Admissions' },
+  { label: 'Admissions 2026' },
+];
+---
+
+<PublicLayout
+  title="Admissions 2026-27 | MJ School Shahpur"
+  description="Apply for admission to MJ School, Shahpur for Academic Session 2026-27. Nursery to Grade XII admissions procedure, eligibility, and enquiry form."
+  breadcrumbs={breadcrumbs}
+  pageTitle="Admissions Open for Session 2026-27"
+  pageSubtitle="Join our vibrant learning community. Admissions are granted on a merit and transparent criteria basis without donation or capitation fees."
+>
+  <div class="bg-white">
+    {/* Mount existing comprehensive Admissions Section with Registration Form & Eligibility */}
+    <AdmissionsSection client:visible />
+  </div>
+</PublicLayout>
