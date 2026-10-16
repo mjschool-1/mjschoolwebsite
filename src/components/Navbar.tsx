@@ -20,6 +20,52 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
     }
   }, []);
 
+  // Lock background scroll when mobile drawer is open
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (mobileMenuOpen) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = '';
+      }
+    };
+  }, [mobileMenuOpen]);
+
+  // Expand active route category when drawer opens
+  useEffect(() => {
+    if (mobileMenuOpen && currentPath) {
+      const activeCategory = MAIN_NAV_ITEMS.find((item) =>
+        item.children?.some(
+          (c) => currentPath === c.href || (c.href !== '/' && currentPath.startsWith(c.href))
+        )
+      );
+      if (activeCategory) {
+        setExpandedMobileCategory(activeCategory.name);
+      }
+    }
+  }, [mobileMenuOpen, currentPath]);
+
+  // Global Escape key listener to close drawer and dropdowns
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (mobileMenuOpen) {
+          setMobileMenuOpen(false);
+        }
+        if (openDropdown) {
+          setOpenDropdown(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [mobileMenuOpen, openDropdown]);
+
   const handleMouseEnter = (name: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setOpenDropdown(name);
@@ -36,7 +82,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
     setOpenDropdown((prev) => (prev === name ? null : name));
   };
 
-  // Keyboard accessibility
+  // Keyboard accessibility for desktop dropdowns
   const handleKeyDown = (e: React.KeyboardEvent, name: string) => {
     if (e.key === 'Escape') {
       setOpenDropdown(null);
@@ -46,7 +92,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
     }
   };
 
-  // Close on outside click
+  // Close desktop dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
@@ -169,89 +215,178 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
           <div className="lg:hidden flex items-center justify-between w-full">
             <a
               href={ADMISSIONS_CTA.href}
-              className="flex items-center gap-1 bg-[#C59B27] text-[#0B2545] text-xs font-black px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all"
+              className="flex items-center gap-1.5 bg-gradient-to-r from-[#C59B27] to-[#E0B236] text-[#0B2545] text-xs font-black px-3.5 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all"
             >
-              <Sparkles className="w-3 h-3" />
+              <Sparkles className="w-3.5 h-3.5" />
               <span>{ADMISSIONS_CTA.name}</span>
             </a>
 
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen(true)}
               className="p-2 rounded-lg text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#F6D55C] cursor-pointer"
-              aria-label="Toggle navigation menu"
+              aria-label="Open navigation drawer"
+              aria-controls="mobile-nav-drawer"
               aria-expanded={mobileMenuOpen}
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6 text-[#F6D55C]" />}
+              <Menu className="w-6 h-6 text-[#F6D55C]" />
             </button>
           </div>
 
         </div>
       </div>
 
-      {/* Mobile Collapsible Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0A1F38] border-t border-slate-700 px-4 py-4 space-y-3 max-h-[80vh] overflow-y-auto">
-          {MAIN_NAV_ITEMS.map((item) => {
-            const isExpanded = expandedMobileCategory === item.name;
-            return (
-              <div key={item.name} className="border-b border-slate-700/60 pb-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExpandedMobileCategory(isExpanded ? null : item.name)
-                  }
-                  className="w-full flex items-center justify-between py-2 text-sm font-bold uppercase tracking-wider text-slate-100 hover:text-[#F6D55C] text-left"
-                  aria-expanded={isExpanded}
+      {/* Mobile Off-Canvas Drawer Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 transition-opacity duration-300 lg:hidden ${
+          mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      {/* Mobile Off-Canvas Sliding Drawer (from right edge) */}
+      <aside
+        id="mobile-nav-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile Navigation Menu"
+        className={`fixed top-0 right-0 bottom-0 z-50 w-[86vw] max-w-sm sm:max-w-md bg-[#07172C] text-white shadow-2xl border-l-2 border-[#C59B27] flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+          mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Drawer Header with School Identity & Close Button */}
+        <div className="bg-[#0B2545] px-5 py-4 border-b border-slate-700/80 flex items-center justify-between shrink-0 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-white p-1 shrink-0 shadow-sm flex items-center justify-center">
+              <img src="/logo.png" alt="MJ School Logo" className="w-full h-full object-contain" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black tracking-wider text-white font-serif uppercase">
+                MJ School
+              </span>
+              <span className="text-[10px] text-[#F6D55C] font-semibold tracking-wide uppercase">
+                CBSE Affiliated • Shahpur
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(false)}
+            className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[#F6D55C] cursor-pointer"
+            aria-label="Close navigation drawer"
+          >
+            <X className="w-5 h-5 text-slate-200 hover:text-white" />
+          </button>
+        </div>
+
+        {/* Drawer Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3.5 overscroll-contain">
+          {/* Section Heading */}
+          <div className="px-1 text-[11px] font-bold text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-800">
+            Navigation Menu
+          </div>
+
+          {/* Primary Navigation Categories */}
+          <div className="space-y-2.5">
+            {MAIN_NAV_ITEMS.map((item) => {
+              const isExpanded = expandedMobileCategory === item.name;
+              const isCategoryActive = item.children?.some(
+                (c) => currentPath === c.href || (c.href !== '/' && currentPath.startsWith(c.href))
+              );
+
+              return (
+                <div
+                  key={item.name}
+                  className={`rounded-xl overflow-hidden border transition-all ${
+                    isExpanded
+                      ? 'border-[#C59B27]/70 bg-[#0B2545] shadow-md'
+                      : isCategoryActive
+                      ? 'border-[#C59B27]/40 bg-[#0B2545]/80'
+                      : 'border-slate-700/60 bg-[#0B2545]/50 hover:border-slate-600'
+                  }`}
                 >
-                  <span>{item.name}</span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                      isExpanded ? 'rotate-180 text-[#F6D55C]' : ''
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedMobileCategory(isExpanded ? null : item.name)
+                    }
+                    aria-expanded={isExpanded}
+                    aria-controls={`submenu-${item.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-left transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F6D55C] ${
+                      isExpanded || isCategoryActive
+                        ? 'text-[#F6D55C]'
+                        : 'text-slate-100 hover:text-[#F6D55C]'
                     }`}
-                  />
-                </button>
+                  >
+                    <span>{item.name}</span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180 text-[#F6D55C]' : ''
+                      }`}
+                    />
+                  </button>
 
-                {isExpanded && item.children && (
-                  <div className="pl-3 space-y-1 mt-1 border-l-2 border-[#C59B27]/60">
-                    {item.children.map((sub) => {
-                      const isLinkActive =
-                        currentPath === sub.href ||
-                        (sub.href !== '/' && currentPath.startsWith(sub.href));
+                  {/* Expandable Submenu Card */}
+                  {isExpanded && item.children && (
+                    <div
+                      id={`submenu-${item.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                      className="bg-[#07172C] border-t border-slate-700/80 divide-y divide-slate-800/80"
+                    >
+                      {item.children.map((sub) => {
+                        const isLinkActive =
+                          currentPath === sub.href ||
+                          (sub.href !== '/' && currentPath.startsWith(sub.href));
 
-                      return (
-                        <a
-                          key={sub.name}
-                          href={sub.href}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className={`block text-xs font-medium py-1.5 px-2 rounded transition-colors ${
-                            isLinkActive
-                              ? 'text-[#F6D55C] bg-white/10 font-bold'
-                              : 'text-slate-300 hover:text-white hover:bg-white/5'
-                          }`}
-                        >
-                          {sub.name}
-                        </a>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                        return (
+                          <a
+                            key={sub.name}
+                            href={sub.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={`flex items-center justify-between min-h-[44px] px-5 py-3 text-xs sm:text-sm font-semibold transition-colors ${
+                              isLinkActive
+                                ? 'bg-amber-500/15 text-[#F6D55C] border-l-4 border-[#C59B27] font-bold'
+                                : 'text-slate-300 hover:text-white hover:bg-white/5 border-l-4 border-transparent'
+                            }`}
+                          >
+                            <span>{sub.name}</span>
+                            <span className="text-slate-500 text-xs">→</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-          {/* Prominent Admissions CTA in Drawer */}
-          <div className="pt-2">
+          {/* Admissions 2026 Prominent CTA Card */}
+          <div className="pt-3 pb-4">
             <a
               href={ADMISSIONS_CTA.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-center bg-gradient-to-r from-[#C59B27] to-[#E0B236] text-[#0B2545] font-black py-2.5 rounded-lg text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all"
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#C59B27] via-[#D8AD32] to-[#E0B236] hover:from-[#b58b19] hover:to-[#cda22b] text-[#0B2545] font-black py-3.5 px-4 rounded-xl text-xs sm:text-sm uppercase tracking-wider shadow-lg active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-[#F6D55C]"
             >
-              Apply for {ADMISSIONS_CTA.name}
+              <Sparkles className="w-4 h-4 text-[#0B2545]" />
+              <span>Apply for {ADMISSIONS_CTA.name}</span>
             </a>
           </div>
         </div>
-      )}
+
+        {/* Drawer Footer Utility */}
+        <div className="bg-[#040D1A] px-5 py-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between shrink-0">
+          <span>CBSE Affiliated Institution</span>
+          <a
+            href="/admissions/fee-payment-2026/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="text-[#F6D55C] hover:underline font-semibold"
+          >
+            Pay Fees Online →
+          </a>
+        </div>
+      </aside>
     </nav>
   );
 };

@@ -8,10 +8,8 @@ import { TopBar } from './components/TopBar';
 import { Header } from './components/Header';
 import { Navbar } from './components/Navbar';
 import { HeroSlider, FlashNews } from './components/HeroSlider';
-import { FeeStructureSection } from './components/FeeStructureSection';
 import { AboutSchoolSection } from './components/AboutSchoolSection';
 import { NoticeBoardAndEvents } from './components/NoticeBoardAndEvents';
-import { AdmissionsSection } from './components/AdmissionsSection';
 import { Footer } from './components/Footer';
 import { ArrowUp } from 'lucide-react';
 
@@ -51,14 +49,8 @@ export default function App() {
         {/* 6. About School Section (Under About Us) */}
         <AboutSchoolSection />
 
-        {/* 7. Fee Structure Section (Inside Admissions with Interactive Calculator & Online Portal) */}
-        <FeeStructureSection />
-
-        {/* 8. Circulars, Notices & Student Hall of Fame */}
+        {/* 7. Circulars, Notices & Student Hall of Fame */}
         <NoticeBoardAndEvents />
-
-        {/* 9. Admissions 2025-26 & Online Registration Form */}
-        <AdmissionsSection />
       </main>
 
       {/* 10. Comprehensive Footer */}

@@ -2,9 +2,7 @@
 import PublicLayout from '../layouts/PublicLayout.astro';
 import { HeroSlider } from '../components/HeroSlider';
 import { AboutSchoolSection } from '../components/AboutSchoolSection';
-import { FeeStructureSection } from '../components/FeeStructureSection';
 import { NoticeBoardAndEvents } from '../components/NoticeBoardAndEvents';
-import { AdmissionsSection } from '../components/AdmissionsSection';
 ---
 
 <PublicLayout title="MJ School - Shahpur | Affiliated to CBSE">
@@ -16,13 +14,7 @@ import { AdmissionsSection } from '../components/AdmissionsSection';
   {/* About School Section */}
   <AboutSchoolSection />
 
-  {/* Fee Structure Section */}
-  <FeeStructureSection client:visible />
-
   {/* Circulars, Notices & Student Hall of Fame */}
   <NoticeBoardAndEvents client:visible />
-
-  {/* Admissions & Online Registration Form */}
-  <AdmissionsSection client:visible />
 </PublicLayout>
 
