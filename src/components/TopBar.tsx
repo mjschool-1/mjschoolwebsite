@@ -30,8 +30,8 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenFee }) => {
           </div>
         </div>
 
-        {/* Only Pay Fees Online Button */}
-        <div className="flex items-center gap-2 sm:gap-3 text-xs">
+        {/* Only Pay Fees Online Button (Desktop only; on mobile it is in Navbar action bar) */}
+        <div className="hidden lg:flex items-center gap-2 sm:gap-3 text-xs">
           {onOpenFee ? (
             <button
               onClick={onOpenFee}

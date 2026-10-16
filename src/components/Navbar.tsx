@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MAIN_NAV_ITEMS, ADMISSIONS_CTA } from '../data/schoolData';
-import { Menu, X, ChevronDown, Sparkles } from 'lucide-react';
+import { Menu, X, ChevronDown, Sparkles, CreditCard } from 'lucide-react';
 
 interface NavbarProps {
   onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
@@ -112,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
       className="bg-[#0B2545] text-white sticky top-0 z-40 shadow-md border-b-2 border-[#C59B27]"
       aria-label="Main Navigation"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-2.5 min-[360px]:px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           
           {/* Desktop Nav Items */}
@@ -211,25 +211,49 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
             </a>
           </div>
 
-          {/* Mobile Bar Trigger */}
-          <div className="lg:hidden flex items-center justify-between w-full">
-            <a
-              href={ADMISSIONS_CTA.href}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-[#C59B27] to-[#E0B236] text-[#0B2545] text-xs font-black px-3.5 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{ADMISSIONS_CTA.name}</span>
-            </a>
+          {/* Mobile Action Bar: Admissions 2026, Pay Fees Online, Hamburger */}
+          <div className="lg:hidden flex items-center justify-between w-full gap-1.5 min-[360px]:gap-2">
+            <div className="flex items-center gap-1.5 min-[360px]:gap-2 shrink min-w-0">
+              {/* Admissions 2026 CTA */}
+              <a
+                href={ADMISSIONS_CTA.href}
+                className="flex items-center gap-1 min-[360px]:gap-1.5 bg-gradient-to-r from-[#C59B27] to-[#E0B236] hover:from-[#b58b19] hover:to-[#cda22b] text-[#0B2545] text-[10.5px] min-[360px]:text-[11.5px] min-[400px]:text-xs font-black px-2 min-[360px]:px-2.5 min-[400px]:px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all whitespace-nowrap shrink-0"
+              >
+                <Sparkles className="w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5 shrink-0" />
+                <span>{ADMISSIONS_CTA.name}</span>
+              </a>
 
+              {/* Pay Fees Online */}
+              {onSelectNav ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectNav('fee-structure')}
+                  className="flex items-center gap-1 min-[360px]:gap-1.5 bg-[#0A1F38] hover:bg-[#133E6E] text-[#F6D55C] border border-[#C59B27] text-[10.5px] min-[360px]:text-[11.5px] min-[400px]:text-xs font-bold px-2 min-[360px]:px-2.5 min-[400px]:px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <CreditCard className="w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5 text-[#F6D55C] shrink-0" />
+                  <span>Pay Fees Online</span>
+                </button>
+              ) : (
+                <a
+                  href="/admissions/fee-payment-2026/"
+                  className="flex items-center gap-1 min-[360px]:gap-1.5 bg-[#0A1F38] hover:bg-[#133E6E] text-[#F6D55C] border border-[#C59B27] text-[10.5px] min-[360px]:text-[11.5px] min-[400px]:text-xs font-bold px-2 min-[360px]:px-2.5 min-[400px]:px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all whitespace-nowrap shrink-0"
+                >
+                  <CreditCard className="w-3 h-3 min-[360px]:w-3.5 min-[360px]:h-3.5 text-[#F6D55C] shrink-0" />
+                  <span>Pay Fees Online</span>
+                </a>
+              )}
+            </div>
+
+            {/* Hamburger Menu Toggle */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="p-2 rounded-lg text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#F6D55C] cursor-pointer"
+              className="p-1.5 min-[360px]:p-2 rounded-lg text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#F6D55C] cursor-pointer shrink-0"
               aria-label="Open navigation drawer"
               aria-controls="mobile-nav-drawer"
               aria-expanded={mobileMenuOpen}
             >
-              <Menu className="w-6 h-6 text-[#F6D55C]" />
+              <Menu className="w-5 h-5 min-[360px]:w-6 min-[360px]:h-6 text-[#F6D55C]" />
             </button>
           </div>
 
