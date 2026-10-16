@@ -22,9 +22,9 @@ export const Logo: React.FC<LogoProps> = ({
 
   const currentSize = isHeader
     ? {
-        img: 'h-[50px] min-[375px]:h-[54px] min-[430px]:h-[58px] sm:h-[72px] lg:h-[84px] xl:h-[88px] w-auto shrink-0',
-        text: 'text-[20px] min-[375px]:text-[22px] min-[430px]:text-[24px] sm:text-[28px] lg:text-[32px] xl:text-[34px]',
-        sub: 'text-[10px] min-[375px]:text-[11px] sm:text-[12px] lg:text-[13px]',
+        img: 'h-[58px] min-[375px]:h-[66px] min-[430px]:h-[72px] sm:h-[76px] lg:h-[84px] xl:h-[88px] w-auto shrink-0 -ml-1 sm:ml-0',
+        text: 'text-[23px] min-[375px]:text-[26px] min-[430px]:text-[28px] sm:text-[30px] lg:text-[32px] xl:text-[34px]',
+        sub: 'text-[10.5px] min-[375px]:text-[11.5px] min-[430px]:text-[12px] sm:text-[12.5px] lg:text-[13px]',
       }
     : sizeMap[size as keyof typeof sizeMap] || sizeMap.md;
 
