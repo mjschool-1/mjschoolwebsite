@@ -50,9 +50,9 @@ export const Header: React.FC<HeaderProps> = ({ onSelectNav }) => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           
           {/* Left: School Logo & Identity */}
-          <div className="flex items-center justify-between">
-            <a href="/" className="group" aria-label="MJ School Home">
-              <Logo size="md" variant="full" />
+          <div className="flex items-center">
+            <a href="/" className="group flex items-center" aria-label="MJ School Home">
+              <Logo size="header" variant="full" />
             </a>
           </div>
 
