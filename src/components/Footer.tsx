@@ -3,12 +3,21 @@ import { Logo } from './Logo';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 
 interface FooterProps {
-  onSelectNav: (target: 'fee-structure' | 'about-school') => void;
+  onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
   const [emailSub, setEmailSub] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+
+  const handleNav = (target: 'fee-structure' | 'about-school') => {
+    if (onSelectNav) {
+      onSelectNav(target);
+    } else {
+      const el = document.getElementById(target);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +51,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
             <ul className="space-y-2 text-xs">
               <li>
                 <button
-                  onClick={() => onSelectNav('about-school')}
+                  onClick={() => handleNav('about-school')}
                   className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5 text-left cursor-pointer"
                 >
                   <span className="text-[#C59B27]">▸</span>
@@ -51,7 +60,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
               </li>
               <li>
                 <button
-                  onClick={() => onSelectNav('fee-structure')}
+                  onClick={() => handleNav('fee-structure')}
                   className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5 text-left cursor-pointer"
                 >
                   <span className="text-[#C59B27]">▸</span>

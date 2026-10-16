@@ -1,0 +1,31 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "MJ School - Shahpur | Affiliated to CBSE",
+  description = "Official website for MJ School, inspired by BK Birla Public School Kalyan, featuring Visiting Hours, Fee Structure, Grades, and School Overview."
+} = Astro.props;
+
+import '../index.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+  </head>
+  <body class="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col selection:bg-[#C59B27] selection:text-white">
+    <slot />
+  </body>
+</html>

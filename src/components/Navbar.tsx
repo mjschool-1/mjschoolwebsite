@@ -3,7 +3,7 @@ import { MAIN_NAV_ITEMS } from '../data/schoolData';
 import { Menu, X, ChevronDown, Sparkles } from 'lucide-react';
 
 interface NavbarProps {
-  onSelectNav: (target: 'fee-structure' | 'about-school') => void;
+  onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
@@ -12,9 +12,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
 
   const handleItemClick = (href: string) => {
     if (href === '#fee-structure') {
-      onSelectNav('fee-structure');
+      if (onSelectNav) onSelectNav('fee-structure');
+      else {
+        const el = document.querySelector('#fee-structure');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
     } else if (href === '#about-school') {
-      onSelectNav('about-school');
+      if (onSelectNav) onSelectNav('about-school');
+      else {
+        const el = document.querySelector('#about-school');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
     } else {
       const el = document.querySelector(href);
       if (el) el.scrollIntoView({ behavior: 'smooth' });

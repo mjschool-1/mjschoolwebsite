@@ -2,10 +2,19 @@ import React from 'react';
 import { Phone, Mail, CreditCard } from 'lucide-react';
 
 interface TopBarProps {
-  onOpenFee: () => void;
+  onOpenFee?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ onOpenFee }) => {
+  const handleOpenFee = () => {
+    if (onOpenFee) {
+      onOpenFee();
+    } else {
+      const el = document.getElementById('fee-structure');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="bg-[#0B2545] text-slate-100 text-xs border-b border-[#1E3A8A]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-3">
@@ -24,8 +33,8 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenFee }) => {
         {/* Only Pay Fees Online Button */}
         <div className="flex items-center gap-2 sm:gap-3 text-xs">
           <button
-            onClick={onOpenFee}
-            className="flex items-center gap-1.5 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold px-3 py-1 rounded transition-colors shadow-sm"
+            onClick={handleOpenFee}
+            className="flex items-center gap-1.5 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold px-3 py-1 rounded transition-colors shadow-sm cursor-pointer"
           >
             <CreditCard className="w-3.5 h-3.5 text-[#0B2545]" />
             <span>Pay Fees Online</span>

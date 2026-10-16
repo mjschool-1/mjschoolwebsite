@@ -3,7 +3,7 @@ import { Logo } from './Logo';
 import { Search, X } from 'lucide-react';
 
 interface HeaderProps {
-  onSelectNav: (target: 'fee-structure' | 'about-school') => void;
+  onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ onSelectNav }) => {
@@ -96,7 +96,12 @@ export const Header: React.FC<HeaderProps> = ({ onSelectNav }) => {
                         <button
                           key={idx}
                           onClick={() => {
-                            onSelectNav(item.target);
+                            if (onSelectNav) {
+                              onSelectNav(item.target);
+                            } else {
+                              const el = document.getElementById(item.target);
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }
                             setShowSearchResults(false);
                             setSearchQuery('');
                           }}
