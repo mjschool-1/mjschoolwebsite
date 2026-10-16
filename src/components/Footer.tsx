@@ -50,31 +50,31 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <button
-                  onClick={() => handleNav('about-school')}
-                  className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5 text-left cursor-pointer"
+                <a
+                  href="/about/principals-message/"
+                  className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5 text-left"
                 >
                   <span className="text-[#C59B27]">▸</span>
                   <strong>About School &amp; Management</strong>
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => handleNav('fee-structure')}
-                  className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5 text-left cursor-pointer"
-                >
-                  <span className="text-[#C59B27]">▸</span>
-                  <strong>Fee Structure &amp; Regulations</strong>
-                </button>
-              </li>
-              <li>
-                <a href="#admissions" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5">
-                  <span className="text-[#C59B27]">▸</span>
-                  <span>Admissions Procedure 2025-26</span>
                 </a>
               </li>
               <li>
-                <a href="#notices" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5">
+                <a
+                  href="/admissions/fee-structure/"
+                  className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5 text-left"
+                >
+                  <span className="text-[#C59B27]">▸</span>
+                  <strong>Fee Structure &amp; Regulations</strong>
+                </a>
+              </li>
+              <li>
+                <a href="/admissions/2026/" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5">
+                  <span className="text-[#C59B27]">▸</span>
+                  <span>Admissions 2026</span>
+                </a>
+              </li>
+              <li>
+                <a href="/notices/" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1.5">
                   <span className="text-[#C59B27]">▸</span>
                   <span>Notices and Circulars</span>
                 </a>
@@ -159,9 +159,9 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
             © {new Date().getFullYear()} MJ School, Kalyan. All Rights Reserved. Affiliated to CBSE.
           </p>
           <div className="flex items-center gap-4">
-            <a href="#about-school" className="hover:text-slate-300">Privacy Policy</a>
+            <a href="/privacy-policy/" className="hover:text-slate-300">Privacy Policy</a>
             <span>•</span>
-            <a href="#about-school" className="hover:text-slate-300">Terms of Service</a>
+            <a href="/terms-and-conditions/" className="hover:text-slate-300">Terms and Conditions</a>
           </div>
         </div>
       </div>

@@ -10,16 +10,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [expandedMobileCategory, setExpandedMobileCategory] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState<string>('');
   const navRef = useRef<HTMLElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const resolveHref = (href: string) => {
-    const base = import.meta.env.BASE_URL || '/';
-    if (href.startsWith('http') || href.startsWith('#')) return href;
-    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-    const cleanHref = href.startsWith('/') ? href : `/${href}`;
-    return `${cleanBase}${cleanHref}`;
-  };
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentPath(window.location.pathname);
+    }
+  }, []);
 
   const handleMouseEnter = (name: string) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -74,6 +73,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
           <div className="hidden lg:flex items-center space-x-1 xl:space-x-2">
             {MAIN_NAV_ITEMS.map((item) => {
               const isOpen = openDropdown === item.name;
+              const isCategoryActive = item.children?.some(
+                (c) => currentPath === c.href || (c.href !== '/' && currentPath.startsWith(c.href))
+              );
+
               return (
                 <div
                   key={item.name}
@@ -88,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
                     aria-haspopup="true"
                     aria-expanded={isOpen}
                     className={`px-3 py-2 text-xs xl:text-[13px] font-semibold uppercase tracking-wider rounded-md transition-colors flex items-center gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F6D55C] ${
-                      isOpen
+                      isOpen || isCategoryActive
                         ? 'text-[#F6D55C] bg-[#133E6E]'
                         : 'text-slate-100 hover:text-[#F6D55C] hover:bg-[#133E6E]'
                     }`}
@@ -118,19 +121,29 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
                         <div className="px-3.5 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider border-b border-slate-100 mb-1">
                           {item.name}
                         </div>
-                        {item.children.map((subItem) => (
-                          <a
-                            key={subItem.name}
-                            href={resolveHref(subItem.href)}
-                            role="menuitem"
-                            onClick={() => {
-                              setOpenDropdown(null);
-                            }}
-                            className="block px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-amber-50 hover:text-[#0B2545] border-l-3 border-transparent hover:border-[#C59B27] focus:outline-none focus:bg-amber-50 focus:border-[#C59B27] focus:text-[#0B2545] transition-all cursor-pointer"
-                          >
-                            {subItem.name}
-                          </a>
-                        ))}
+                        {item.children.map((subItem) => {
+                          const isLinkActive =
+                            currentPath === subItem.href ||
+                            (subItem.href !== '/' && currentPath.startsWith(subItem.href));
+
+                          return (
+                            <a
+                              key={subItem.name}
+                              href={subItem.href}
+                              role="menuitem"
+                              onClick={() => {
+                                setOpenDropdown(null);
+                              }}
+                              className={`block px-4 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                                isLinkActive
+                                  ? 'bg-amber-50 text-[#0B2545] border-l-3 border-[#C59B27] font-bold'
+                                  : 'text-slate-700 hover:bg-amber-50 hover:text-[#0B2545] border-l-3 border-transparent hover:border-[#C59B27]'
+                              } focus:outline-none focus:bg-amber-50 focus:border-[#C59B27] focus:text-[#0B2545]`}
+                            >
+                              {subItem.name}
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -142,8 +155,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
           {/* Admissions 2026 CTA Button (Desktop) */}
           <div className="hidden lg:flex items-center">
             <a
-              href={resolveHref(ADMISSIONS_CTA.href)}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-[#C59B27] to-[#E0B236] hover:from-[#b58b19] hover:to-[#cda22b] text-[#0B2545] font-black text-xs uppercase tracking-wider px-4 py-2 rounded-lg shadow-md transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#F6D55C] cursor-pointer"
+              href={ADMISSIONS_CTA.href}
+              className={`flex items-center gap-1.5 bg-gradient-to-r from-[#C59B27] to-[#E0B236] hover:from-[#b58b19] hover:to-[#cda22b] text-[#0B2545] font-black text-xs uppercase tracking-wider px-4 py-2 rounded-lg shadow-md transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#F6D55C] cursor-pointer ${
+                currentPath.startsWith('/admissions/2026') ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0B2545]' : ''
+              }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{ADMISSIONS_CTA.name}</span>
@@ -153,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
           {/* Mobile Bar Trigger */}
           <div className="lg:hidden flex items-center justify-between w-full">
             <a
-              href={resolveHref(ADMISSIONS_CTA.href)}
+              href={ADMISSIONS_CTA.href}
               className="flex items-center gap-1 bg-[#C59B27] text-[#0B2545] text-xs font-black px-3 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all"
             >
               <Sparkles className="w-3 h-3" />
@@ -199,16 +214,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
 
                 {isExpanded && item.children && (
                   <div className="pl-3 space-y-1 mt-1 border-l-2 border-[#C59B27]/60">
-                    {item.children.map((sub) => (
-                      <a
-                        key={sub.name}
-                        href={resolveHref(sub.href)}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="block text-xs font-medium text-slate-300 hover:text-white py-1.5 px-2 rounded hover:bg-white/5 transition-colors"
-                      >
-                        {sub.name}
-                      </a>
-                    ))}
+                    {item.children.map((sub) => {
+                      const isLinkActive =
+                        currentPath === sub.href ||
+                        (sub.href !== '/' && currentPath.startsWith(sub.href));
+
+                      return (
+                        <a
+                          key={sub.name}
+                          href={sub.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={`block text-xs font-medium py-1.5 px-2 rounded transition-colors ${
+                            isLinkActive
+                              ? 'text-[#F6D55C] bg-white/10 font-bold'
+                              : 'text-slate-300 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          {sub.name}
+                        </a>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -218,7 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav }) => {
           {/* Prominent Admissions CTA in Drawer */}
           <div className="pt-2">
             <a
-              href={resolveHref(ADMISSIONS_CTA.href)}
+              href={ADMISSIONS_CTA.href}
               onClick={() => setMobileMenuOpen(false)}
               className="block text-center bg-gradient-to-r from-[#C59B27] to-[#E0B236] text-[#0B2545] font-black py-2.5 rounded-lg text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all"
             >

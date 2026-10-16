@@ -13,11 +13,17 @@ export const Header: React.FC<HeaderProps> = ({ onSelectNav }) => {
 
   // Search items database
   const searchableContent = [
-    { title: 'Fee Structure & Payment Schedule 2025-26', type: 'Admissions', target: 'fee-structure' as const, desc: 'Interactive fee calculator, quarterly dues and online payment portal' },
-    { title: 'About MJ School History & Philosophy', type: 'About Us', target: 'about-school' as const, desc: 'Vision, Mission, Leadership & CBSE Affiliation' },
-    { title: 'Online Admission Registration 2025-26', type: 'Admissions', target: 'fee-structure' as const, desc: 'Eligibility, documents required, and online application form' },
-    { title: "Principal's Desk Message", type: 'About Us', target: 'about-school' as const, desc: 'Message from the Principal' },
-    { title: 'School Circulars & Examination Schedule', type: 'Notices', target: 'about-school' as const, desc: 'Download official circulars and academic calendar' },
+    { title: 'Fee Structure & Payment Schedule 2026', type: 'Admissions', href: '/admissions/fee-structure/', desc: 'Interactive fee calculator, quarterly dues and fee details' },
+    { title: 'Fee Payment Portal 2026', type: 'Admissions', href: '/admissions/fee-payment-2026/', desc: 'Quarterly dues, net banking, UPI and card payments' },
+    { title: 'About MJ School History & Philosophy', type: 'About Us', href: '/about/principals-message/', desc: 'Vision, Mission, Leadership & CBSE Affiliation' },
+    { title: 'Online Admission Registration 2026', type: 'Admissions', href: '/admissions/2026/', desc: 'Eligibility, documents required, and online application form' },
+    { title: "Principal's Desk Message", type: 'About Us', href: '/about/principals-message/', desc: 'Message from the Principal' },
+    { title: 'Campus Infrastructure & Smart Classrooms', type: 'About Us', href: '/about/infrastructure/', desc: 'State-of-the-art campus, digital labs, and secure premises' },
+    { title: 'School Facilities & Sports Complex', type: 'Facilities', href: '/facilities/', desc: 'Laboratories, library, sports grounds, and transportation' },
+    { title: 'Faculty & Academic Staff', type: 'About Us', href: '/about/faculty-staff/', desc: 'Qualified educators and academic departments' },
+    { title: 'Academic Syllabus & Curriculum', type: 'Academics', href: '/academics/syllabus/', desc: 'CBSE syllabus guidelines and grading structure' },
+    { title: 'School Circulars & Examination Schedule', type: 'Notices', href: '/notices/', desc: 'Download official circulars and academic calendar' },
+    { title: 'Frequently Asked Questions (FAQs)', type: 'Notices', href: '/faqs/', desc: 'Common queries regarding admissions, transport and timings' },
   ];
 
   const filteredResults = searchQuery.trim() === ''
@@ -45,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ onSelectNav }) => {
           
           {/* Left: School Logo & Identity */}
           <div className="flex items-center justify-between">
-            <a href="#home" className="group">
+            <a href="/" className="group" aria-label="MJ School Home">
               <Logo size="md" variant="full" />
             </a>
           </div>
@@ -96,14 +102,9 @@ export const Header: React.FC<HeaderProps> = ({ onSelectNav }) => {
                         <button
                           key={idx}
                           onClick={() => {
-                            if (onSelectNav) {
-                              onSelectNav(item.target);
-                            } else {
-                              const el = document.getElementById(item.target);
-                              if (el) el.scrollIntoView({ behavior: 'smooth' });
-                            }
                             setShowSearchResults(false);
                             setSearchQuery('');
+                            window.location.href = item.href;
                           }}
                           className="w-full px-3.5 py-2.5 text-left hover:bg-amber-50/50 flex items-start justify-between group transition-colors cursor-pointer"
                         >

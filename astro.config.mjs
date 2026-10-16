@@ -5,6 +5,11 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://mjschool.in',
+  server: {
+    port: 3000,
+    host: true,
+  },
   output: 'static',
   adapter: cloudflare({
     imageService: 'passthrough',

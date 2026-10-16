@@ -32,13 +32,23 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenFee }) => {
 
         {/* Only Pay Fees Online Button */}
         <div className="flex items-center gap-2 sm:gap-3 text-xs">
-          <button
-            onClick={handleOpenFee}
-            className="flex items-center gap-1.5 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold px-3 py-1 rounded transition-colors shadow-sm cursor-pointer"
-          >
-            <CreditCard className="w-3.5 h-3.5 text-[#0B2545]" />
-            <span>Pay Fees Online</span>
-          </button>
+          {onOpenFee ? (
+            <button
+              onClick={onOpenFee}
+              className="flex items-center gap-1.5 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold px-3 py-1 rounded transition-colors shadow-sm cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-[#0B2545]" />
+              <span>Pay Fees Online</span>
+            </button>
+          ) : (
+            <a
+              href="/admissions/fee-payment-2026/"
+              className="flex items-center gap-1.5 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold px-3 py-1 rounded transition-colors shadow-sm cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-[#0B2545]" />
+              <span>Pay Fees Online</span>
+            </a>
+          )}
         </div>
       </div>
     </div>
