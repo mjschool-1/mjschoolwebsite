@@ -1,6 +1,5 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { Camera, Image, Sparkles } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'Gallery' },
@@ -8,133 +7,71 @@ const breadcrumbs = [
 
 const galleryItems = [
   {
-    title: 'Sprawling Green Campus Infrastructure',
-    category: 'Campus Life',
-    image: 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=800&q=80',
-    desc: 'The architectural centerpiece and eco-friendly learning environment of MJ School.',
-  },
-  {
-    title: 'Advanced STEM & Physics Research Lab',
-    category: 'STEM & Labs',
-    image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=800&q=80',
-    desc: 'Students conducting precision experiments under faculty supervision.',
-  },
-  {
-    title: 'Annual Inter-House Athletics Meet',
-    category: 'Sports',
-    image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=800&q=80',
-    desc: 'Track athletes competing for the championship trophy on the athletic field.',
-  },
-  {
-    title: 'Central Library Reading Sanctuary',
-    category: 'Campus Life',
-    image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
-    desc: 'Scholars delving into research archives, encyclopedias, and literature.',
-  },
-  {
-    title: 'Interactive Coding & Robotics Workshop',
-    category: 'STEM & Labs',
-    image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80',
-    desc: 'Young innovators programming automation models and competing in robotics leagues.',
-  },
-  {
-    title: 'Annual Cultural Festival & Performing Arts',
-    category: 'Cultural Events',
-    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
-    desc: 'Vibrant musical recitals, classical dance dramas, and stage productions.',
-  },
-  {
-    title: 'Collaborative Classrooms & Smart Learning',
-    category: 'Campus Life',
+    eyebrow: '01 · CAMPUS LIFE',
+    title: 'Everyday Learning',
+    description: 'A strong start begins in the classroom. We focus on building foundational skills, encouraging curiosity, and helping children learn with confidence.',
     image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
-    desc: 'Multimedia interactive smart boards transforming traditional instruction.',
+    alt: 'Everyday classroom learning at MJ School',
   },
   {
-    title: 'Basketball Championship Trials',
-    category: 'Sports',
-    image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
-    desc: 'Intense drills and inter-school matches on our synthetic courts.',
-  },
-  {
-    title: 'Art, Sculpture & Design Exhibition',
-    category: 'Cultural Events',
+    eyebrow: '02 · CREATIVE ACTIVITIES',
+    title: 'Learning Beyond Books',
+    description: 'Through art, competitions, recitation, singing, and hands-on activities, children discover their interests and develop self-expression.',
     image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=800&q=80',
-    desc: 'Student artworks, paintings, and handicrafts displayed at the annual fest.',
+    alt: 'Children participating in creative activities and art',
+  },
+  {
+    eyebrow: '03 · CULTURE & VALUES',
+    title: 'Rooted in Indian Values',
+    description: 'Festival celebrations, shloka competitions, and cultural activities help children appreciate Indian traditions, respect, and togetherness.',
+    image: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=800&q=80',
+    alt: 'Cultural celebrations and traditional values at MJ School',
   },
 ];
 ---
 
 <PublicLayout
-  title="Campus Gallery | MJ School Shahpur"
-  description="Explore moments of academic discovery, sporting glory, and cultural vibrance at MJ School, Shahpur."
+  title="Moments at MJ School | MJ School Shahpur"
+  description="A glimpse into learning, creativity, and the values that shape everyday school life at MJ School, Shahapur."
   breadcrumbs={breadcrumbs}
-  pageTitle="Campus Gallery & Visual Highlights"
-  pageSubtitle="A glimpse into everyday campus life, student accolades, sporting events, and cultural milestones."
+  pageTitle="Moments at MJ School"
+  pageSubtitle="A glimpse into learning, creativity, and the values that shape everyday school life at MJ School, Shahapur."
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      {/* Category Filter Pills (Visual UI) */}
-      <div class="flex flex-wrap items-center justify-center gap-2 mb-10">
-        <span class="px-4 py-1.5 rounded-full text-xs font-bold bg-[#0B2545] text-white shadow-sm cursor-pointer">
-          All Moments
-        </span>
-        <span class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">
-          Campus Life
-        </span>
-        <span class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">
-          STEM &amp; Innovation
-        </span>
-        <span class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">
-          Sports &amp; Athletics
-        </span>
-        <span class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 cursor-pointer transition-colors">
-          Cultural Events
-        </span>
-      </div>
-
-      {/* Gallery Photo Grid */}
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+      {/* Exactly Three Gallery Tiles */}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
         {galleryItems.map((item) => (
-          <div class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group flex flex-col">
-            <div class="relative h-56 overflow-hidden">
+          <div class="bg-white border border-slate-200 flex flex-col justify-between hover:border-slate-300 transition-colors">
+            {/* Image */}
+            <div class="w-full aspect-[16/10] sm:aspect-[4/3] overflow-hidden bg-slate-100 border-b border-slate-200">
               <img
                 src={item.image}
-                alt={item.title}
-                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                alt={item.alt}
+                class="w-full h-full object-cover"
+                loading="lazy"
               />
-              <div class="absolute inset-0 bg-gradient-to-t from-[#0B2545]/85 via-transparent to-transparent flex items-end p-4">
-                <span class="text-[11px] font-bold text-[#F6D55C] uppercase tracking-wider bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">
-                  {item.category}
-                </span>
-              </div>
             </div>
 
-            <div class="p-5 flex-1 flex flex-col justify-between">
-              <div>
-                <h3 class="font-bold text-sm text-[#0B2545] font-serif mb-1 group-hover:text-[#C59B27] transition-colors">
-                  {item.title}
-                </h3>
-                <p class="text-xs text-slate-600 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
+            {/* Content Area */}
+            <div class="p-6 sm:p-7 flex-1 flex flex-col justify-start">
+              <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
+              <span class="text-xs font-bold text-[#C59B27] tracking-wider uppercase block mb-1.5">
+                {item.eyebrow}
+              </span>
+              <h2 class="text-lg sm:text-xl font-bold font-serif text-[#0B2545] mb-2.5 leading-snug">
+                {item.title}
+              </h2>
+              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                {item.description}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Share Moments Banner */}
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 text-center max-w-3xl mx-auto">
-        <Camera class="w-8 h-8 text-[#C59B27] mx-auto mb-2" />
-        <h3 class="text-base font-bold font-serif text-[#0B2545]">
-          Capturing Lifelong School Memories
-        </h3>
-        <p class="text-xs text-slate-600 mt-1">
-          High-resolution photographs from Annual Days, Sports Meets, and convocations are available for registered parents on the School ERP Portal.
-        </p>
-      </div>
-
     </div>
   </div>
 </PublicLayout>
+

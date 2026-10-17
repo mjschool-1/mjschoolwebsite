@@ -115,7 +115,6 @@ export const FEE_STRUCTURE_DATA = [
 export const FLASH_NEWS = [
   'Admissions Open for Academic Session 2025-26: Registrations for Nursery to Grade IX and Grade XI (Science / Commerce / Humanities) are now live.',
   'MJ School achieves 100% distinction in CBSE Class X & XII Board Examinations with 28 state rank holders.',
-  'Annual Inter-School Cultural & Tech Fest "SPARK 2025" to be held on 24th & 25th November. Register now.',
   'CBSE Expression Series on Viksit Bharat: Participation open for Grades 3 to 12. Submit entries at library desk.',
   'Parent-Teacher Interaction (PTM) for Term II scheduled for this Saturday from 09:00 AM to 12:30 PM.',
 ];
