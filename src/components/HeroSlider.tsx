@@ -1,22 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { FLASH_NEWS } from '../data/schoolData';
 import { Bell, Pause, Play } from 'lucide-react';
+import { getPublishedBanner, DEFAULT_HOMEPAGE_BANNER } from '../lib/supabase';
 
 interface HeroSliderProps {
   onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
+  initialDesktopBanner?: string;
+  initialMobileBanner?: string;
 }
 
-export const HeroSlider: React.FC<HeroSliderProps> = () => {
+const resolveBannerUrl = (path: string, defaultPath: string) => {
+  if (!path) return `${import.meta.env.BASE_URL}${defaultPath.replace(/^\//, '')}`;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+};
+
+export const HeroSlider: React.FC<HeroSliderProps> = ({
+  initialDesktopBanner,
+  initialMobileBanner,
+}) => {
+  const [desktopSrc, setDesktopSrc] = useState<string>(() =>
+    resolveBannerUrl(initialDesktopBanner || DEFAULT_HOMEPAGE_BANNER.desktop_image_path, 'hero-desktop.png')
+  );
+  const [mobileSrc, setMobileSrc] = useState<string>(() =>
+    resolveBannerUrl(initialMobileBanner || DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png')
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBanner() {
+      try {
+        const record = await getPublishedBanner('homepage');
+        if (isMounted && record) {
+          if (record.desktop_image_path) {
+            setDesktopSrc(resolveBannerUrl(record.desktop_image_path, 'hero-desktop.png'));
+          }
+          if (record.mobile_image_path) {
+            setMobileSrc(resolveBannerUrl(record.mobile_image_path, 'hero-mobile.png'));
+          }
+        }
+      } catch (e) {
+        // Failover remains silently on default assets
+      }
+    }
+    loadBanner();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="relative bg-slate-900 overflow-hidden">
       {/* Background Hero Banner Frame: Aspect Ratio matched to 535x378 (mobile) & 1920x640 (desktop) */}
       <div className="relative w-full aspect-[535/378] md:aspect-[1920/640] overflow-hidden">
         <picture className="w-full h-full block">
-          <source media="(min-width: 768px)" srcSet={`${import.meta.env.BASE_URL}hero-desktop.png`} />
+          <source media="(min-width: 768px)" srcSet={desktopSrc} />
           <img
-            src={`${import.meta.env.BASE_URL}hero-mobile.png`}
+            src={mobileSrc}
             alt="MJ School Banner"
             className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
           />
         </picture>
       </div>
