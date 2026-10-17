@@ -22,6 +22,7 @@ function flattenHtmlPlugin() {
 export default defineConfig(() => {
   return {
     base: '/mjschoolwebsite/',
+    cacheDir: path.resolve(import.meta.dirname || __dirname, 'node_modules/.vite-standalone'),
     plugins: [react(), tailwindcss(), flattenHtmlPlugin()],
     resolve: {
       alias: {
