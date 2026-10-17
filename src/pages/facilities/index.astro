@@ -1,117 +1,71 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { Microscope, BookOpen, Trophy, Palette, HeartPulse, Laptop } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'Facilities' },
 ];
 
-const facilityCategories = [
+const facilities = [
   {
-    icon: Microscope,
-    title: 'Advanced Science & Innovation Labs',
-    subtitle: 'Physics, Chemistry, Biology & Robotics Labs',
-    desc: 'Fully equipped composite and individual laboratories designed strictly in accordance with CBSE senior secondary practical norms, enabling hands-on experimental research under experienced laboratory mentors.',
-    image: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=800&q=80',
-    tags: ['Robotics & AI', 'Precision Apparatus', 'Safety Fume Hoods'],
+    title: 'Classrooms & Learning Spaces',
+    desc: 'Comfortable classroom spaces where children develop essential academic skills, explore new concepts, and build confidence through everyday learning.',
+    tags: ['CLASSROOM LEARNING', 'ACADEMIC FOUNDATIONS'],
   },
   {
-    icon: BookOpen,
-    title: 'Central Library & Media Resource Hub',
-    subtitle: '15,000+ Volumes, E-Journals & Reading Lounges',
-    desc: 'An inspiring sanctuary of knowledge housing curriculum books, competitive examination materials, encyclopedias, international periodicals, and high-speed digital research terminals.',
-    image: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
-    tags: ['Digital Archive', 'Quiet Study Pods', 'Junior Reader Corner'],
+    title: 'Cleanliness & Hygiene',
+    desc: 'Essential sanitary facilities and an emphasis on personal hygiene help children develop healthy everyday habits.',
+    tags: ['HYGIENE', 'HEALTHY HABITS'],
   },
   {
-    icon: Trophy,
-    title: 'Olympic-Standard Sports Complex',
-    subtitle: 'Athletics Track, Basketball Courts & Football Turf',
-    desc: 'Promoting physical stamina and sportsmanship with multi-discipline facilities including an all-weather athletic track, synthetic basketball courts, cricket practice pitches, and indoor table tennis halls.',
-    image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=800&q=80',
-    tags: ['Certified NIS Coaches', 'Annual Sports Meet', 'Yoga Pavilion'],
+    title: 'Early Years Play & Swimming',
+    desc: 'Opportunities for play and physical activity support the development of coordination, confidence, and active habits. A small swimming pool is planned for Junior and Senior KG children.',
+    tags: ['KINDERGARTEN', 'PHYSICAL DEVELOPMENT'],
   },
   {
-    icon: Laptop,
-    title: 'Next-Gen IT & Coding Studios',
-    subtitle: 'High-Performance Terminals & Coding Labs',
-    desc: 'Equipped with the latest computing machines, licensed programming environments, cybersecurity awareness modules, and AI education tools aligned with NEP 2020 skill standards.',
-    image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80',
-    tags: ['Python & Web Labs', '1:1 Terminal Ratio', 'Gigabit Network'],
-  },
-  {
-    icon: Palette,
-    title: 'Performing Arts & Visual Creativity Studios',
-    subtitle: 'Music, Dance, Fine Arts & Drama Amphitheatre',
-    desc: 'Dedicated spaces for Hindustani & Western music training, classical dance routines, clay sculpting, and theatrical arts where students express their inner aesthetic creativity.',
-    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
-    tags: ['Acoustic Studio', 'Exhibition Foyer', 'Instrument Bank'],
-  },
-  {
-    icon: HeartPulse,
-    title: 'Campus Infirmary & Healthcare',
-    subtitle: 'Full-time Medical Nurse & First-Aid Center',
-    desc: 'Well-appointed medical room with immediate first-aid provisions, routine health check-up records, nebulizers, oxygen backup, and on-call tie-ups with leading local pediatric hospitals.',
-    image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=800&q=80',
-    tags: ['Annual Health Screening', 'Emergency Protocol', 'Nutritional Counseling'],
+    title: 'Indian Values & Traditions',
+    desc: 'Our Saraswati Devi statue and dedicated flagpole area reflect the importance of knowledge, respect, cultural heritage, and national pride in school life.',
+    tags: ['INDIAN CULTURE', 'VALUE-BASED LEARNING'],
   },
 ];
 ---
 
 <PublicLayout
-  title="Campus Facilities | MJ School Shahpur"
-  description="Explore the world-class learning, sports, lab and cultural facilities at MJ School, Shahpur designed for holistic student development."
+  title="Our School Facilities | MJ School Shahpur"
+  description="A welcoming environment for learning, play, creativity, and all-round development at MJ School, Shahapur."
   breadcrumbs={breadcrumbs}
-  pageTitle="World-Class Campus Facilities"
-  pageSubtitle="Empowering scholarly exploration and dynamic character development through first-rate physical and technological infrastructure."
+  pageTitle="Our School Facilities"
+  pageSubtitle="A welcoming environment for learning, play, creativity, and all-round development at MJ School, Shahapur."
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-        {facilityCategories.map((facility) => {
-          const Icon = facility.icon;
-          return (
-            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all group flex flex-col">
-              <div class="relative h-48 overflow-hidden">
-                <img
-                  src={facility.image}
-                  alt={facility.title}
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-[#0B2545]/80 via-transparent to-transparent flex items-end p-4">
-                  <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Icon class="w-4 h-4 text-[#F6D55C]" />
-                    {facility.subtitle}
-                  </span>
-                </div>
-              </div>
-
-              <div class="p-6 flex-1 flex flex-col justify-between">
-                <div>
-                  <h3 class="text-base font-bold text-[#0B2545] font-serif mb-2">
-                    {facility.title}
-                  </h3>
-                  <p class="text-xs text-slate-600 leading-relaxed mb-4">
-                    {facility.desc}
-                  </p>
-                </div>
-
-                <div class="pt-3 border-t border-slate-100 flex flex-wrap gap-1.5">
-                  {facility.tags.map((tag) => (
-                    <span class="text-[10px] uppercase font-bold text-[#0B2545] bg-blue-50 px-2 py-0.5 rounded">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
+      {/* Four Simplified Facilities Cards Grid */}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        {facilities.map((facility) => (
+          <div class="bg-white border border-slate-200 p-6 sm:p-8 flex flex-col justify-between hover:border-slate-300 transition-colors">
+            <div>
+              <div class="w-8 h-0.5 bg-[#C59B27] mb-3.5"></div>
+              <h2 class="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
+                {facility.title}
+              </h2>
+              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
+                {facility.desc}
+              </p>
             </div>
-          );
-        })}
+
+            <div class="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+              {facility.tags.map((tag) => (
+                <span class="text-[10px] font-bold text-[#0B2545] bg-slate-100 border border-slate-200/80 px-2.5 py-1 tracking-wider uppercase">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Campus Tour CTA */}
-      <div class="bg-gradient-to-r from-slate-50 to-amber-50/50 border border-slate-200 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+      <div class="bg-gradient-to-r from-slate-50 to-amber-50/50 border border-slate-200 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
         <div>
           <h3 class="text-lg font-bold font-serif text-[#0B2545]">
             Experience Our Campus In Person
@@ -122,7 +76,7 @@ const facilityCategories = [
         </div>
         <a
           href="/admissions/2026/"
-          class="shrink-0 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase px-5 py-2.5 rounded-lg shadow-sm transition-all"
+          class="shrink-0 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase px-5 py-2.5 shadow-sm transition-all"
         >
           Book an Admission Visit
         </a>
@@ -131,3 +85,4 @@ const facilityCategories = [
     </div>
   </div>
 </PublicLayout>
+
