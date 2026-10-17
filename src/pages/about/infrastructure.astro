@@ -1,6 +1,6 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { Building2, Sun, Shield, Bus, Wind, Wifi } from 'lucide-react';
+import { Trees, Sprout, Heart, Sparkles, BookOpen, Trophy } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'About Us', href: '/about/principals-message/' },
@@ -9,65 +9,65 @@ const breadcrumbs = [
 
 const highlights = [
   {
-    icon: Building2,
-    title: '10-Acre Learning Sanctuary',
-    desc: 'Sprawling green campus designed with modern educational architecture, expansive courtyards, and natural ventilation.',
+    icon: Trees,
+    title: 'Green Learning Environment',
+    desc: 'A cleaner, greener school environment that inspires children to connect with nature and care for their surroundings.',
   },
   {
-    icon: Sun,
-    title: 'Eco-Friendly & Solar Powered',
-    desc: 'Dedicated solar installations, rainwater harvesting plants, and zero-plastic campus guidelines supporting environmental sustainability.',
+    icon: Sprout,
+    title: 'Environmental Awareness',
+    desc: 'Nature walks and cleanliness activities encourage eco-friendly habits and environmental responsibility.',
   },
   {
-    icon: Shield,
-    title: '24/7 Monitored Campus Security',
-    desc: 'Comprehensive CCTV coverage across all corridors, entry gates, and grounds with trained security personnel and RFID attendance.',
+    icon: Heart,
+    title: 'A Caring School Environment',
+    desc: 'We encourage a culture of respect, attentive supervision, and positive learning experiences for every child.',
   },
   {
-    icon: Bus,
-    title: 'Safe GPS-Enabled Transport',
-    desc: 'Fleet of modern buses equipped with speed governors, CCTV cameras, GPS tracking, and female attendants covering all major routes.',
+    icon: Sparkles,
+    title: 'Clean & Hygienic Facilities',
+    desc: 'Classroom and sanitary facilities designed to support students’ everyday comfort and hygiene.',
   },
   {
-    icon: Wifi,
-    title: 'Digital Smart Classrooms',
-    desc: 'High-speed fiber connectivity, interactive smart panels, multimedia visualizers, and acoustically treated learning spaces.',
+    icon: BookOpen,
+    title: 'Learning Through Strong Foundations',
+    desc: 'Building essential skills in languages, mathematics, and core subjects through structured learning and regular assessments.',
   },
   {
-    icon: Wind,
-    title: 'Hygienic Dining & Pure Water',
-    desc: 'Multi-stage RO drinking water plants on every floor, modern sanitation facilities, and nutritious cafeteria services.',
+    icon: Trophy,
+    title: 'All-Round Development',
+    desc: 'Creative activities, sports, and cultural celebrations nurture confidence, teamwork, and Indian values.',
   },
 ];
 ---
 
 <PublicLayout
-  title="Campus Infrastructure | MJ School Shahpur"
-  description="Explore the 10-acre world-class campus infrastructure of MJ School, Shahpur featuring smart classrooms, green architecture, and monitored security."
+  title="Our Campus & Infrastructure | MJ School Shahpur"
+  description="Explore the campus environment of MJ School, Shahpur — a thoughtfully planned school where young minds build strong foundations and grow with confidence."
   breadcrumbs={breadcrumbs}
-  pageTitle="Campus Infrastructure"
-  pageSubtitle="State-of-the-art facilities designed to provide a safe, sustainable, and intellectually vibrant learning sanctuary."
+  pageTitle="Our Campus & Infrastructure"
+  pageSubtitle="A thoughtfully planned school environment where young minds build strong foundations, discover their interests, and grow with confidence."
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       {/* Visual Hero Feature */}
-      <div class="relative rounded-2xl overflow-hidden shadow-xl border-4 border-slate-100 mb-12">
+      <div class="relative rounded-2xl overflow-hidden shadow-xl border-4 border-slate-100 mb-12 min-h-[380px] sm:min-h-[360px] md:h-96 flex flex-col justify-end">
         <img
           src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1600&q=80"
           alt="MJ School Shahpur Campus Aerial View"
-          class="w-full h-80 sm:h-96 object-cover"
+          class="absolute inset-0 w-full h-full object-cover"
         />
-        <div class="absolute inset-0 bg-gradient-to-t from-[#0B2545]/90 via-[#0B2545]/40 to-transparent flex items-end p-6 sm:p-10">
-          <div class="text-white max-w-2xl">
-            <span class="inline-block bg-[#C59B27] text-[#0B2545] font-black text-xs uppercase px-3 py-1 rounded shadow-sm mb-2">
-              Modern Campus Architecture
+        <div class="relative z-10 bg-gradient-to-t from-[#0B2545]/95 via-[#0B2545]/60 to-[#0B2545]/10 p-6 sm:p-10 w-full">
+          <div class="text-white max-w-3xl">
+            <span class="inline-block bg-[#C59B27] text-[#0B2545] font-black text-xs uppercase px-3 py-1 rounded shadow-sm mb-2.5 tracking-wider">
+              BUILDING FOR THE FUTURE
             </span>
-            <h2 class="text-xl sm:text-3xl font-bold font-serif text-white">
-              An Inspiring Physical & Digital Learning Ecosystem
+            <h2 class="text-xl sm:text-2xl md:text-3xl font-bold font-serif text-white leading-tight">
+              Growing Our Campus. Expanding Young Minds.
             </h2>
-            <p class="text-xs sm:text-sm text-slate-200 mt-1">
-              Thoughtfully built to inspire creativity, foster collaboration, and guarantee maximum safety for every student.
+            <p class="text-xs sm:text-sm text-slate-200 mt-2 leading-relaxed">
+              MJ School is developing its campus with a vision to create a welcoming, well-planned environment for learning and all-round development. As our infrastructure takes shape, our focus remains on helping every child build knowledge, confidence, creativity, and strong values.
             </p>
           </div>
         </div>
@@ -78,39 +78,41 @@ const highlights = [
         {highlights.map((item) => {
           const Icon = item.icon;
           return (
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all group">
-              <div class="w-12 h-12 rounded-lg bg-blue-100 text-[#0B2545] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#C59B27] group-hover:text-white transition-all">
-                <Icon class="w-6 h-6" />
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all group flex flex-col h-full justify-between">
+              <div>
+                <div class="w-12 h-12 rounded-lg bg-blue-100 text-[#0B2545] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#C59B27] group-hover:text-white transition-all">
+                  <Icon class="w-6 h-6" />
+                </div>
+                <h3 class="font-bold text-base text-[#0B2545] font-serif mb-2">
+                  {item.title}
+                </h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  {item.desc}
+                </p>
               </div>
-              <h3 class="font-bold text-base text-[#0B2545] font-serif mb-2">
-                {item.title}
-              </h3>
-              <p class="text-xs text-slate-600 leading-relaxed">
-                {item.desc}
-              </p>
             </div>
           );
         })}
       </div>
 
-      {/* Safety & Compliance Banner */}
-      <div class="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div>
+      {/* Bottom Commitment Banner */}
+      <div class="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div class="max-w-2xl">
           <span class="text-xs text-[#F6D55C] font-bold uppercase tracking-wider block mb-1">
-            Student Safety First
+            OUR COMMITMENT
           </span>
-          <h3 class="text-lg sm:text-xl font-bold font-serif">
-            Full Compliance with CBSE Safety & Disaster Management Guidelines
+          <h3 class="text-lg sm:text-xl font-bold font-serif leading-snug">
+            A Strong Foundation for Every Child
           </h3>
-          <p class="text-xs text-slate-300 mt-1 max-w-2xl">
-            Bi-annual fire safety audits, structural stability certification, dedicated medical first-aid room, and regular evacuation drills.
+          <p class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
+            At MJ School, we bring together academic learning, Indian values, creativity, and opportunities for all-round development to help young learners take confident steps towards their future.
           </p>
         </div>
         <a
-          href="/facilities/"
-          class="shrink-0 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold text-xs uppercase px-5 py-2.5 rounded-lg shadow-md transition-all"
+          href="/academics/syllabus/"
+          class="shrink-0 w-full sm:w-auto text-center bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold text-xs uppercase px-6 py-3 rounded-lg shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          View Campus Facilities
+          Explore our academic approach
         </a>
       </div>
 
