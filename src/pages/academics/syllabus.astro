@@ -1,116 +1,149 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { BookOpen, FileCheck, Layers, Award, FileText, Download } from 'lucide-react';
+import { FileText, Users, TrendingUp } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'Academics', href: '/academics/syllabus/' },
-  { label: 'Syllabus' },
+  { label: 'Curriculum & Syllabus' },
 ];
 
-const tiers = [
+const curriculumStages = [
   {
-    grade: 'Foundational Stage',
-    levels: 'Nursery, Jr. KG, Sr. KG, Grades I & II',
-    focus: 'Play-way pedagogy, language phonetics, numerical literacy, emotional expression, sensory discovery.',
-    subjects: ['English & Phonics', 'Number Work', 'Hindi / Regional Language', 'EVS & Storytelling', 'Music & Movement'],
+    stageLabel: 'NURSERY',
+    heading: 'The Joy of First Learning',
+    description: 'Children begin discovering the world through play, stories, songs, movement, and guided activities that encourage communication, curiosity, and social development.',
+    sectionLabel: 'LEARNING AREAS',
+    items: [
+      'Language & Listening',
+      'Early Numeracy',
+      'Rhymes & Stories',
+      'Art & Play',
+      'Social Skills',
+    ],
   },
   {
-    grade: 'Preparatory Stage',
-    levels: 'Grades III to V',
-    focus: 'Building core concepts in language, mathematical logic, scientific curiosity, and collaborative group tasks.',
-    subjects: ['English', 'Mathematics', 'General Science', 'Social Studies', 'Second Language', 'Computer & Coding Basics'],
+    stageLabel: 'JUNIOR KG',
+    heading: 'Discover, Explore & Express',
+    description: 'Children strengthen early language and number skills through hands-on activities, creative expression, and opportunities to explore their surroundings.',
+    sectionLabel: 'LEARNING AREAS',
+    items: [
+      'English Readiness',
+      'Number Concepts',
+      'Hindi / Language',
+      'Environmental Awareness',
+      'Creative Activities',
+    ],
   },
   {
-    grade: 'Middle Stage',
-    levels: 'Grades VI to VIII',
-    focus: 'Experiential science, specialized laboratory exposure, critical reasoning, third language introduction.',
-    subjects: ['English Literature & Grammar', 'Mathematics', 'Integrated Science', 'Social Science', 'Hindi', 'Sanskrit', 'AI & Robotics'],
+    stageLabel: 'SENIOR KG',
+    heading: 'Ready for Primary School',
+    description: 'Children develop greater independence and school readiness through early reading and writing, number operations, communication, and guided problem-solving.',
+    sectionLabel: 'LEARNING AREAS',
+    items: [
+      'Reading & Writing',
+      'Mathematical Readiness',
+      'Language Development',
+      'World Around Us',
+      'Art & Physical Activities',
+    ],
   },
   {
-    grade: 'Secondary Stage (CBSE)',
-    levels: 'Grades IX & X',
-    focus: 'Rigorous CBSE board syllabus, structured lab journals, periodic assessments, and career aptitude workshops.',
-    subjects: ['English Language & Literature', 'Mathematics (Standard / Basic)', 'Science (Phy/Chem/Bio)', 'Social Science', 'Hindi / Sanskrit', 'IT Skills'],
+    stageLabel: 'GRADES 1–5',
+    heading: 'Building Knowledge & Confidence',
+    description: 'A structured academic programme develops subject understanding, independent thinking, communication, creativity, and problem-solving skills, with learning progressing at every grade level.',
+    sectionLabel: 'CORE SUBJECTS',
+    items: [
+      'English',
+      'Hindi / Second Language',
+      'Mathematics',
+      'Environmental Studies',
+      'Computer Awareness',
+      'Art & Craft',
+      'Physical Education',
+    ],
+  },
+];
+
+const assessmentItems = [
+  {
+    title: 'Regular Written Assessments',
+    description: 'Monitor understanding and reinforce concepts.',
+    icon: FileText,
   },
   {
-    grade: 'Senior Secondary (Science)',
-    levels: 'Grades XI & XII',
-    focus: 'Intensive preparation for CBSE Board & competitive entrances (JEE / NEET / CUET) with high-end lab research.',
-    subjects: ['Physics', 'Chemistry', 'Mathematics / Biology', 'English Core', 'Computer Science / Physical Education'],
+    title: 'Classroom Participation',
+    description: 'Observe communication, engagement, and practical learning.',
+    icon: Users,
   },
   {
-    grade: 'Senior Secondary (Commerce & Humanities)',
-    levels: 'Grades XI & XII',
-    focus: 'Analytical accounting, macroeconomics, business management, human societies, and public policy.',
-    subjects: ['Accountancy', 'Business Studies', 'Economics', 'History / Political Science', 'English Core', 'Applied Mathematics'],
+    title: 'Continuous Progress',
+    description: 'Encourage steady improvement through feedback and guidance.',
+    icon: TrendingUp,
   },
 ];
 ---
 
 <PublicLayout
   title="Curriculum & Syllabus | MJ School Shahpur"
-  description="CBSE academic syllabus and curriculum breakdown for Pre-Primary to Grade XII at MJ School, Shahpur."
+  description="Building strong foundations through engaging lessons, meaningful activities, and values-based learning from Nursery to Grade 5 at MJ School, Shahpur."
   breadcrumbs={breadcrumbs}
-  pageTitle="Academic Curriculum & Syllabus"
-  pageSubtitle="A progressive, CBSE-aligned curriculum cultivating deep conceptual understanding, scientific temper, and holistic capabilities."
+  pageTitle="Curriculum & Syllabus"
+  pageSubtitle="Building strong foundations through engaging lessons, meaningful activities, and values-based learning from Nursery to Grade 5."
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      {/* NEP 2020 Framework Card */}
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 sm:p-8 mb-12">
+      {/* Learning Approach Panel */}
+      <div class="bg-slate-50 border border-slate-200 p-6 sm:p-8 mb-12">
         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div class="space-y-2">
-            <span class="inline-block bg-[#C59B27] text-[#0B2545] text-[10px] font-black uppercase px-2.5 py-1 rounded">
-              NEP 2020 Aligned
+          <div class="space-y-2 max-w-3xl">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#C59B27] block">
+              OUR LEARNING APPROACH
             </span>
-            <h2 class="text-xl font-bold font-serif text-[#0B2545]">
-              National Education Policy 5+3+3+4 Pedagogical Structure
+            <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] leading-snug">
+              Learning That Builds Strong Foundations
             </h2>
-            <p class="text-xs text-slate-600 max-w-3xl leading-relaxed">
-              Our curriculum seamlessly shifts from rote memorization toward inquiry-based learning, practical laboratory applications, creative problem-solving, and continuous formative assessment.
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              At MJ School, our curriculum focuses on developing essential academic skills, curiosity, creativity, and confidence. Through structured lessons, interactive activities, and regular assessments, we help children understand concepts, express ideas, and develop a love for learning.
             </p>
           </div>
-          <div class="shrink-0 flex items-center gap-3">
+          <div class="shrink-0 w-full sm:w-auto">
             <a
-              href="#syllabus-table"
-              class="bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+              href="#curriculum-stages"
+              class="inline-block w-full sm:w-auto text-center bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold uppercase tracking-wider px-6 py-3 transition-colors shadow-sm"
             >
-              Explore Grades
+              Explore Our Grades
             </a>
           </div>
         </div>
       </div>
 
-      {/* Grade Tier Cards */}
-      <div id="syllabus-table" class="space-y-6 mb-12">
-        <h3 class="text-lg font-bold font-serif text-[#0B2545]">
-          Stage-Wise Academic Breakdown
-        </h3>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tiers.map((tier) => (
-            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+      {/* Four Curriculum Stage Sections */}
+      <div id="curriculum-stages" class="scroll-mt-28 mb-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {curriculumStages.map((stage) => (
+            <div class="bg-white border border-slate-200 p-6 sm:p-8 flex flex-col justify-between hover:border-slate-300 transition-colors">
               <div>
-                <span class="text-[10px] uppercase font-bold text-[#C59B27] tracking-wider block mb-1">
-                  {tier.levels}
+                <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
+                <span class="text-xs font-bold text-[#C59B27] tracking-wider uppercase block mb-1">
+                  {stage.stageLabel}
                 </span>
-                <h4 class="text-base font-bold text-[#0B2545] font-serif mb-2">
-                  {tier.grade}
-                </h4>
-                <p class="text-xs text-slate-600 mb-4 leading-relaxed">
-                  {tier.focus}
+                <h3 class="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
+                  {stage.heading}
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
+                  {stage.description}
                 </p>
               </div>
 
-              <div class="pt-3 border-t border-slate-100">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Core Subjects
+              <div class="pt-4 border-t border-slate-100">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  {stage.sectionLabel}
                 </span>
-                <div class="flex flex-wrap gap-1">
-                  {tier.subjects.map((sub) => (
-                    <span class="text-[10px] bg-slate-50 border border-slate-200 text-slate-700 px-2 py-0.5 rounded">
-                      {sub}
+                <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                  {stage.items.map((item) => (
+                    <span class="text-[11px] font-medium bg-slate-50 border border-slate-200 text-slate-700 px-2.5 py-1">
+                      {item}
                     </span>
                   ))}
                 </div>
@@ -120,28 +153,41 @@ const tiers = [
         </div>
       </div>
 
-      {/* Assessment Guidelines */}
-      <div class="bg-gradient-to-r from-blue-50/60 to-slate-50 border border-blue-100 rounded-2xl p-6 sm:p-8">
-        <h3 class="text-base font-bold font-serif text-[#0B2545] mb-3 flex items-center gap-2">
-          <Award class="w-5 h-5 text-[#C59B27]" />
-          Evaluation &amp; Examination Pattern
-        </h3>
-        <p class="text-xs text-slate-600 leading-relaxed mb-4 max-w-4xl">
-          Students are evaluated through Continuous and Comprehensive Evaluation (CCE). The academic year comprises two terms with Periodic Tests (PT 1, PT 2, PT 3), Half-Yearly Examinations, and Annual / CBSE Pre-Board examinations. Internal assessment includes portfolio evaluation, laboratory notebooks, subject enrichment activities, and regular class participation.
-        </p>
-        <div class="flex flex-wrap gap-4 text-xs font-semibold text-[#0B2545]">
-          <span class="flex items-center gap-1.5">
-            <FileCheck class="w-4 h-4 text-emerald-600" /> Formative Quizzes &amp; Orals
-          </span>
-          <span class="flex items-center gap-1.5">
-            <FileCheck class="w-4 h-4 text-emerald-600" /> Lab Practical Portfolios
-          </span>
-          <span class="flex items-center gap-1.5">
-            <FileCheck class="w-4 h-4 text-emerald-600" /> CBSE Board Pattern Pre-Boards
-          </span>
+      {/* Assessment & Learning Progress */}
+      <div class="bg-slate-50 border border-slate-200 p-6 sm:p-8">
+        <div class="max-w-3xl mb-8">
+          <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] mb-2 leading-snug">
+            Assessment &amp; Learning Progress
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            We believe every child's progress matters. Regular assessments, classroom participation, and activity-based learning help teachers understand students' strengths and identify areas where additional guidance may be useful.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {assessmentItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div class="bg-white border border-slate-200 p-5 flex flex-col justify-between">
+                <div>
+                  <div class="w-9 h-9 bg-slate-100 text-[#0B2545] flex items-center justify-center mb-3.5 border border-slate-200/60">
+                    <Icon class="w-4 h-4 text-[#C59B27]" />
+                  </div>
+                  <h3 class="font-bold text-sm font-serif text-[#0B2545] mb-1.5">
+                    {item.title}
+                  </h3>
+                  <p class="text-xs text-slate-600 leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
     </div>
   </div>
 </PublicLayout>
+
