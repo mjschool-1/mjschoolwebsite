@@ -9,21 +9,25 @@ const facilities = [
   {
     title: 'Classrooms & Learning Spaces',
     desc: 'Comfortable classroom spaces where children develop essential academic skills, explore new concepts, and build confidence through everyday learning.',
+    image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
     tags: ['CLASSROOM LEARNING', 'ACADEMIC FOUNDATIONS'],
   },
   {
     title: 'Cleanliness & Hygiene',
     desc: 'Essential sanitary facilities and an emphasis on personal hygiene help children develop healthy everyday habits.',
+    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80',
     tags: ['HYGIENE', 'HEALTHY HABITS'],
   },
   {
     title: 'Early Years Play & Swimming',
     desc: 'Opportunities for play and physical activity support the development of coordination, confidence, and active habits. A small swimming pool is planned for Junior and Senior KG children.',
+    image: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
     tags: ['KINDERGARTEN', 'PHYSICAL DEVELOPMENT'],
   },
   {
     title: 'Indian Values & Traditions',
     desc: 'Our Saraswati Devi statue and dedicated flagpole area reflect the importance of knowledge, respect, cultural heritage, and national pride in school life.',
+    image: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=800&q=80',
     tags: ['INDIAN CULTURE', 'VALUE-BASED LEARNING'],
   },
 ];
@@ -39,26 +43,39 @@ const facilities = [
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      {/* Four Simplified Facilities Cards Grid */}
+      {/* Four Simplified Facilities Cards Grid with Flat Images */}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
         {facilities.map((facility) => (
-          <div class="bg-white border border-slate-200 p-6 sm:p-8 flex flex-col justify-between hover:border-slate-300 transition-colors">
-            <div>
-              <div class="w-8 h-0.5 bg-[#C59B27] mb-3.5"></div>
-              <h2 class="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
-                {facility.title}
-              </h2>
-              <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
-                {facility.desc}
-              </p>
+          <div class="bg-white border border-slate-200 flex flex-col justify-between hover:border-slate-300 transition-colors">
+            {/* Flat Rectangular Image at Top (16:9 aspect ratio, square corners, no overlay) */}
+            <div class="w-full aspect-[16/9] overflow-hidden bg-slate-100 border-b border-slate-200">
+              <img
+                src={facility.image}
+                alt={facility.title}
+                class="w-full h-full object-cover block"
+                loading="lazy"
+              />
             </div>
 
-            <div class="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
-              {facility.tags.map((tag) => (
-                <span class="text-[10px] font-bold text-[#0B2545] bg-slate-100 border border-slate-200/80 px-2.5 py-1 tracking-wider uppercase">
-                  {tag}
-                </span>
-              ))}
+            {/* Content Body */}
+            <div class="p-6 sm:p-7 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="w-8 h-0.5 bg-[#C59B27] mb-3.5"></div>
+                <h2 class="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
+                  {facility.title}
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
+                  {facility.desc}
+                </p>
+              </div>
+
+              <div class="pt-4 border-t border-slate-100 flex flex-wrap gap-2">
+                {facility.tags.map((tag) => (
+                  <span class="text-[10px] font-bold text-[#0B2545] bg-slate-100 border border-slate-200/80 px-2.5 py-1 tracking-wider uppercase">
+                    {tag}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         ))}
