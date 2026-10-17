@@ -49,68 +49,18 @@ export const ADMISSIONS_CTA = {
   href: '/admissions/2026/',
 };
 
-export const FEE_STRUCTURE_DATA = [
-  {
-    category: 'Pre-Primary',
-    grades: 'Nursery, Jr. KG, Sr. KG',
-    admissionFee: 15000,
-    annualCharges: 18500,
-    tuitionFeePerQuarter: 14500,
-    activityAndLabFee: 6000,
-    totalAnnual: 82500,
-    includes: ['Montessori kit', 'Activity materials', 'Smart classes', 'Medical care', 'Music & Dance'],
-  },
-  {
-    category: 'Foundational / Primary',
-    grades: 'Grade I to Grade V',
-    admissionFee: 15000,
-    annualCharges: 21000,
-    tuitionFeePerQuarter: 16800,
-    activityAndLabFee: 8500,
-    totalAnnual: 96700,
-    includes: ['IT & Coding lab', 'Library subscription', 'Sports coaching', 'Worksheets & LMS portal', 'First Aid'],
-  },
-  {
-    category: 'Middle School',
-    grades: 'Grade VI to Grade VIII',
-    admissionFee: 15000,
-    annualCharges: 23500,
-    tuitionFeePerQuarter: 18900,
-    activityAndLabFee: 10500,
-    totalAnnual: 109600,
-    includes: ['Science labs (Phy/Chem/Bio)', 'Robotics & AI Lab', 'Clubs & SUPW', 'Annual Sports meet kit'],
-  },
-  {
-    category: 'Secondary School',
-    grades: 'Grade IX & Grade X (CBSE)',
-    admissionFee: 15000,
-    annualCharges: 25000,
-    tuitionFeePerQuarter: 21200,
-    activityAndLabFee: 12000,
-    totalAnnual: 121800,
-    includes: ['CBSE Registration & Pre-Board materials', 'Advanced Science labs', 'Career counseling & aptitude tests'],
-  },
-  {
-    category: 'Senior Secondary (Science)',
-    grades: 'Grade XI & Grade XII (PCM / PCB / PCMB)',
-    admissionFee: 18000,
-    annualCharges: 28000,
-    tuitionFeePerQuarter: 24500,
-    activityAndLabFee: 16000,
-    totalAnnual: 142000,
-    includes: ['Integrated competitive prep guidance', 'High-end specialized labs', 'Practical journals', 'CBSE Project mentorship'],
-  },
-  {
-    category: 'Senior Secondary (Commerce & Arts)',
-    grades: 'Grade XI & Grade XII (Commerce / Humanities)',
-    admissionFee: 18000,
-    annualCharges: 26000,
-    tuitionFeePerQuarter: 22800,
-    activityAndLabFee: 11000,
-    totalAnnual: 128200,
-    includes: ['Economics & Accounts workshops', 'Virtual Stock Trading Lab', 'Humanities seminars', 'Field research'],
-  },
-];
+export interface FeeStructureItem {
+  category: string;
+  grades: string;
+  tuitionFeePerQuarter?: number | null;
+  otherCharges?: number | null;
+  totalAnnual?: number | null;
+  paymentSchedule?: string;
+  includes?: string[];
+}
+
+// Official fee schedule will be populated once confirmed and published by the school
+export const FEE_STRUCTURE_DATA: FeeStructureItem[] = [];
 
 export const FLASH_NEWS = [
   'Admissions Open for Academic Session 2025-26: Registrations for Nursery to Grade IX and Grade XI (Science / Commerce / Humanities) are now live.',

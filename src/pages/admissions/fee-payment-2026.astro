@@ -1,45 +1,36 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { CreditCard, ShieldAlert, Calendar, CheckCircle, HelpCircle, Building } from 'lucide-react';
+import { Calendar, CreditCard, Info } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'Fees & Payment Structure', href: '/admissions/fee-structure/' },
   { label: 'Fee Payment 2026' },
 ];
-
-const quarters = [
-  { quarter: 'Quarter 1 (April - June)', dueDate: '10th April 2026', includes: 'Tuition Fee, Annual Charges, Activity & Lab Fee' },
-  { quarter: 'Quarter 2 (July - Sept)', dueDate: '10th July 2026', includes: 'Tuition Fee, Transport Fee (if opted)' },
-  { quarter: 'Quarter 3 (Oct - Dec)', dueDate: '10th October 2026', includes: 'Tuition Fee, Term II Assessment Fee, Transport' },
-  { quarter: 'Quarter 4 (Jan - March)', dueDate: '10th January 2027', includes: 'Tuition Fee, Annual Sports/Activity Clearance' },
-];
 ---
 
 <PublicLayout
-  title="Fee Payment 2026 | MJ School Shahpur"
-  description="Quarterly fee payment schedule, payment modes, and online portal information for academic session 2026-27 at MJ School, Shahpur."
+  title="Fee Payment Portal 2026 | MJ School Shahpur"
+  description="Fee payment information, installment schedule updates, and payment guidance for MJ School, Shahapur."
   breadcrumbs={breadcrumbs}
   pageTitle="Fee Payment Portal 2026"
-  pageSubtitle="Information on approved payment schedules, bank accounts, and quarterly installment deadlines."
+  pageSubtitle="Information on approved payment schedules, fee policies, and official school updates."
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      {/* Important Notice Banner: Demo / Gateway Integration Pending */}
-      <div class="bg-amber-50 border-2 border-[#C59B27] rounded-2xl p-6 sm:p-8 mb-12 shadow-sm">
-        <div class="flex items-start gap-3 sm:gap-4">
-          <ShieldAlert class="w-6 h-6 text-[#C59B27] shrink-0 mt-1" />
-          <div class="space-y-1.5 text-xs text-amber-950">
-            <h2 class="text-sm sm:text-base font-bold text-[#0B2545] font-serif">
-              Online Payment Gateway Status: Integration in Progress (Demo Placeholder)
-            </h2>
-            <p class="leading-relaxed">
-              This page displays the official fee installment calendar and accepted institutional payment modes. <strong>Live automated online transactions are currently disabled</strong> pending final payment gateway certification with our banking partner.
-            </p>
-            <p class="text-[11px] text-amber-800 font-medium">
-              Note: This website does not collect credit/debit card numbers, CVVs, or UPI PINs. Please do not submit financial credentials online.
-            </p>
-          </div>
+      {/* Neutral Fee Payment Information Notice */}
+      <div class="bg-slate-50 border border-slate-200 p-6 sm:p-8 mb-12">
+        <div class="max-w-3xl">
+          <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
+          <span class="text-xs font-bold text-[#C59B27] tracking-wider uppercase block mb-1.5">
+            Official Notice
+          </span>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] mb-2 leading-snug">
+            Fee Payment Information
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            Fee payment details for the upcoming academic session will be published here once confirmed by the school. Please contact the school office for current fee-related enquiries.
+          </p>
         </div>
       </div>
 
@@ -47,90 +38,59 @@ const quarters = [
         
         {/* Left: Quarterly Due Calendar */}
         <div class="lg:col-span-7 space-y-6">
-          <div>
-            <h3 class="text-lg font-bold font-serif text-[#0B2545] mb-2 flex items-center gap-2">
+          <div class="bg-white border border-slate-200 p-6 sm:p-8">
+            <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
+            <h3 class="text-lg sm:text-xl font-bold font-serif text-[#0B2545] mb-3 flex items-center gap-2">
               <Calendar class="w-5 h-5 text-[#C59B27]" />
-              Quarterly Installment Schedule (Academic Year 2026-27)
+              Quarterly Installment Schedule
             </h3>
-            <p class="text-xs text-slate-500 mb-6">
-              Fees are payable in four quarterly installments. To avoid late surcharge, parents are requested to remit dues on or before the 10th of the respective quarter month.
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
+              The installment schedule will be updated once the school finalizes and publishes the fee details.
             </p>
-          </div>
 
-          <div class="space-y-4">
-            {quarters.map((q, idx) => (
-              <div class="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span class="text-[10px] font-black uppercase text-[#0B2545] bg-blue-100 px-2 py-0.5 rounded">
-                    Installment 0{idx + 1}
-                  </span>
-                  <h4 class="font-bold text-sm text-[#0B2545] mt-1.5">
-                    {q.quarter}
-                  </h4>
-                  <p class="text-xs text-slate-500 mt-0.5">
-                    Covers: {q.includes}
-                  </p>
-                </div>
-                <div class="text-left sm:text-right shrink-0">
-                  <span class="text-[10px] text-slate-400 uppercase font-bold block">Due By</span>
-                  <span class="text-xs font-bold text-[#C59B27]">{q.dueDate}</span>
-                </div>
-              </div>
-            ))}
+            <div class="bg-slate-50 border border-slate-200 p-5 text-xs text-slate-600 leading-relaxed">
+              <p class="font-bold text-[#0B2545] mb-1">
+                Installment Schedule Status: Pending School Publication
+              </p>
+              <p>
+                Once approved, the complete quarterly timeline and official payment schedule will be displayed in this section.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Right: Accepted Payment Modes & Cash Counter */}
+        {/* Right: Payment Information & Fee Structure Link */}
         <div class="lg:col-span-5 space-y-6">
-          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6">
-            <h3 class="text-base font-bold font-serif text-[#0B2545] mb-4 flex items-center gap-2">
-              <Building class="w-5 h-5 text-[#C59B27]" />
-              Approved Payment Modes
+          <div class="bg-white border border-slate-200 p-6 sm:p-8">
+            <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
+            <h3 class="text-lg sm:text-xl font-bold font-serif text-[#0B2545] mb-3 flex items-center gap-2">
+              <CreditCard class="w-5 h-5 text-[#C59B27]" />
+              Payment Information
             </h3>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
+              Available payment methods will be announced by the school. Please confirm the accepted payment options with the school office before making a payment.
+            </p>
 
-            <div class="space-y-4 text-xs text-slate-700">
-              <div class="flex items-start gap-2.5 pb-3 border-b border-slate-200">
-                <CheckCircle class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong class="text-[#0B2545] block">1. School Accounts Counter (In-Person)</strong>
-                  <p class="text-slate-500 mt-0.5">
-                    Demand Draft, Pay Order, or POS Card swipe at the School Accounts Office during counter hours (09:00 AM – 02:00 PM, Mon–Sat).
-                  </p>
-                </div>
-              </div>
-
-              <div class="flex items-start gap-2.5 pb-3 border-b border-slate-200">
-                <CheckCircle class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong class="text-[#0B2545] block">2. Institutional Bank Transfer (NEFT / RTGS)</strong>
-                  <p class="text-slate-500 mt-0.5">
-                    Direct transfer to the designated MJ School collection account. Please quote Student ID &amp; Full Name in transfer remarks and submit UTR receipt to accounts.
-                  </p>
-                </div>
-              </div>
-
-              <div class="flex items-start gap-2.5">
-                <CheckCircle class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong class="text-[#0B2545] block">3. School ERP Mobile Application</strong>
-                  <p class="text-slate-500 mt-0.5">
-                    Available through official parent login credentials upon formal admission confirmation.
-                  </p>
-                </div>
-              </div>
+            <div class="bg-slate-50 border border-slate-200 p-4 text-xs text-slate-600 leading-relaxed">
+              <p class="font-bold text-[#0B2545] mb-1">
+                School Office Assistance
+              </p>
+              <p>
+                For verified payment guidance and administrative assistance, please connect directly with the MJ School accounts office.
+              </p>
             </div>
           </div>
 
-          <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-xs text-blue-900">
-            <h4 class="font-bold text-sm mb-1 text-[#0B2545]">
-              Looking for Full Fee Schedule?
+          <div class="bg-slate-50 border border-slate-200 p-6 text-xs text-slate-700">
+            <h4 class="font-bold text-sm mb-1 text-[#0B2545] font-serif">
+              Looking for Fee Structure Details?
             </h4>
-            <p class="text-slate-600 mb-3">
-              View the approved class-wise annual fee breakdown and interactive quarterly calculator.
+            <p class="text-slate-600 mb-4 leading-relaxed">
+              View the official fee structure guidelines and policy updates.
             </p>
             <a
               href="/admissions/fee-structure/"
-              class="inline-block bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold py-2 px-4 rounded text-xs transition-colors"
+              class="inline-block bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold py-2.5 px-4 text-xs uppercase tracking-wider transition-colors"
             >
               Go to Fee Structure &rarr;
             </a>
@@ -142,3 +102,4 @@ const quarters = [
     </div>
   </div>
 </PublicLayout>
+
