@@ -8,6 +8,11 @@ import {
   DEFAULT_HOMEPAGE_BANNER,
   SiteBannerRecord,
   verifyStaffAuthorization,
+  NoticeRecord,
+  getAllNotices,
+  createNotice,
+  updateNotice,
+  deleteNotice,
 } from '../../lib/supabase';
 import {
   Image as ImageIcon,
@@ -38,9 +43,11 @@ import {
   Edit3,
   Eye,
   EyeOff,
+  Bell,
+  FileText,
 } from 'lucide-react';
 
-type AdminTab = 'banners' | 'students' | 'receipts';
+type AdminTab = 'banners' | 'students' | 'receipts' | 'notices';
 
 interface SelectedImageState {
   file: File;
@@ -83,6 +90,29 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [mobileFile, setMobileFile] = useState<SelectedImageState | null>(null);
   const [isSavingBanner, setIsSavingBanner] = useState(false);
   const [saveBannerMessage, setSaveBannerMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Notices management state
+  const [noticesList, setNoticesList] = useState<NoticeRecord[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState<boolean>(false);
+  const [isEditingNotice, setIsEditingNotice] = useState<boolean>(false);
+  const [editingNotice, setEditingNotice] = useState<NoticeRecord | null>(null);
+  const [noticeTitle, setNoticeTitle] = useState<string>('');
+  const [noticeDate, setNoticeDate] = useState<string>('');
+  const [noticeCategory, setNoticeCategory] = useState<string>('General');
+  const [noticeDescription, setNoticeDescription] = useState<string>('');
+  const [noticeGrades, setNoticeGrades] = useState<string[]>(['All Grades']);
+  const [noticeIsNew, setNoticeIsNew] = useState<boolean>(true);
+  const [noticeHasAttachment, setNoticeHasAttachment] = useState<boolean>(false);
+  const [noticeAttachmentUrl, setNoticeAttachmentUrl] = useState<string>('');
+  const [noticeFileSize, setNoticeFileSize] = useState<string>('');
+  const [noticeIsPublished, setNoticeIsPublished] = useState<boolean>(true);
+  const [noticeDisplayOrder, setNoticeDisplayOrder] = useState<number>(0);
+  const [isSavingNotice, setIsSavingNotice] = useState<boolean>(false);
+  const [noticeSaveMessage, setNoticeSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [deleteConfirmNotice, setDeleteConfirmNotice] = useState<NoticeRecord | null>(null);
+  const [isDeletingNotice, setIsDeletingNotice] = useState<boolean>(false);
+  const [noticeSearchQuery, setNoticeSearchQuery] = useState<string>('');
+  const [noticeCategoryFilter, setNoticeCategoryFilter] = useState<string>('All');
 
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -213,11 +243,172 @@ export const SchoolOfficeAdmin: React.FC = () => {
     }
   };
 
+  // Fetch all notices when authenticated
+  const loadNotices = async () => {
+    setNoticesLoading(true);
+    try {
+      const data = await getAllNotices();
+      setNoticesList(data);
+    } catch (err) {
+      console.error('Failed to load notices list:', err);
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       loadBanners();
+      loadNotices();
     }
   }, [isAuthenticated]);
+
+  const handleOpenCreateNotice = () => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    setEditingNotice(null);
+    setNoticeTitle('');
+    setNoticeDate(today);
+    setNoticeCategory('General');
+    setNoticeDescription('');
+    setNoticeGrades(['All Grades']);
+    setNoticeIsNew(true);
+    setNoticeHasAttachment(false);
+    setNoticeAttachmentUrl('');
+    setNoticeFileSize('300 KB');
+    setNoticeIsPublished(true);
+    setNoticeDisplayOrder(noticesList.length + 1);
+    setNoticeSaveMessage(null);
+    setIsEditingNotice(true);
+  };
+
+  const handleOpenEditNotice = (n: NoticeRecord) => {
+    setEditingNotice(n);
+    setNoticeTitle(n.title);
+    setNoticeDate(n.date);
+    setNoticeCategory(n.category);
+    setNoticeDescription(n.description || '');
+    setNoticeGrades(Array.isArray(n.grades) ? n.grades : ['All Grades']);
+    setNoticeIsNew(Boolean(n.is_new));
+    setNoticeHasAttachment(Boolean(n.has_attachment));
+    setNoticeAttachmentUrl(n.attachment_url || '');
+    setNoticeFileSize(n.file_size || '');
+    setNoticeIsPublished(Boolean(n.is_published));
+    setNoticeDisplayOrder(n.display_order ?? 0);
+    setNoticeSaveMessage(null);
+    setIsEditingNotice(true);
+  };
+
+  const handleToggleGrade = (grade: string) => {
+    if (grade === 'All Grades') {
+      setNoticeGrades(['All Grades']);
+      return;
+    }
+    setNoticeGrades((prev) => {
+      const withoutAll = prev.filter((g) => g !== 'All Grades');
+      if (withoutAll.includes(grade)) {
+        const next = withoutAll.filter((g) => g !== grade);
+        return next.length === 0 ? ['All Grades'] : next;
+      } else {
+        return [...withoutAll, grade];
+      }
+    });
+  };
+
+  const handleSaveNotice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noticeTitle.trim()) {
+      setNoticeSaveMessage({ type: 'error', text: 'Please enter a title for the notice.' });
+      return;
+    }
+    if (!noticeDate.trim()) {
+      setNoticeSaveMessage({ type: 'error', text: 'Please specify the date for the notice.' });
+      return;
+    }
+
+    setIsSavingNotice(true);
+    setNoticeSaveMessage(null);
+
+    try {
+      if (editingNotice) {
+        const res = await updateNotice(editingNotice.id, {
+          title: noticeTitle.trim(),
+          date: noticeDate.trim(),
+          category: noticeCategory.trim(),
+          description: noticeDescription.trim(),
+          grades: noticeGrades.length > 0 ? noticeGrades : ['All Grades'],
+          is_new: noticeIsNew,
+          has_attachment: noticeHasAttachment,
+          attachment_url: noticeAttachmentUrl.trim() || null,
+          file_size: noticeHasAttachment ? (noticeFileSize.trim() || '300 KB') : null,
+          is_published: noticeIsPublished,
+          display_order: Number(noticeDisplayOrder) || 0,
+          updated_by: currentUserEmail || 'Admin',
+        });
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to update notice');
+        }
+      } else {
+        const res = await createNotice({
+          title: noticeTitle.trim(),
+          date: noticeDate.trim(),
+          category: noticeCategory.trim(),
+          description: noticeDescription.trim(),
+          grades: noticeGrades.length > 0 ? noticeGrades : ['All Grades'],
+          is_new: noticeIsNew,
+          has_attachment: noticeHasAttachment,
+          attachment_url: noticeAttachmentUrl.trim() || null,
+          file_size: noticeHasAttachment ? (noticeFileSize.trim() || '300 KB') : null,
+          is_published: noticeIsPublished,
+          display_order: Number(noticeDisplayOrder) || noticesList.length + 1,
+          updated_by: currentUserEmail || 'Admin',
+        });
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to create notice');
+        }
+      }
+
+      await loadNotices();
+      setIsEditingNotice(false);
+    } catch (err: any) {
+      setNoticeSaveMessage({ type: 'error', text: err.message || 'Operation failed.' });
+    } finally {
+      setIsSavingNotice(false);
+    }
+  };
+
+  const handleTogglePublishNotice = async (n: NoticeRecord) => {
+    try {
+      const res = await updateNotice(n.id, {
+        is_published: !n.is_published,
+        updated_by: currentUserEmail || 'Admin',
+      });
+      if (res.success) {
+        await loadNotices();
+      } else {
+        alert(res.error || 'Failed to toggle publication status.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle publication status.');
+    }
+  };
+
+  const handleDeleteNoticeConfirmed = async () => {
+    if (!deleteConfirmNotice) return;
+    setIsDeletingNotice(true);
+    try {
+      const res = await deleteNotice(deleteConfirmNotice.id);
+      if (res.success) {
+        await loadNotices();
+        setDeleteConfirmNotice(null);
+      } else {
+        alert(res.error || 'Failed to delete notice.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete notice.');
+    } finally {
+      setIsDeletingNotice(false);
+    }
+  };
 
   // Handle staff sign-in with database authorization check
   const handleSignIn = async (e: React.FormEvent) => {
@@ -950,6 +1141,22 @@ export const SchoolOfficeAdmin: React.FC = () => {
             >
               <Receipt className="w-4 h-4" />
               <span>3. Fee Receipts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('notices');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors text-left cursor-pointer ${
+                activeTab === 'notices'
+                  ? 'bg-[#C59B27] text-[#0B2545] shadow-sm font-black'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Bell className="w-4 h-4" />
+              <span>4. Notices &amp; Events</span>
             </button>
           </nav>
         </div>
@@ -1770,6 +1977,532 @@ export const SchoolOfficeAdmin: React.FC = () => {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 4. NOTICES & EVENTS MANAGEMENT TAB */}
+        {activeTab === 'notices' && (
+          <div className="space-y-6">
+            {/* Tab Header with Create Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold font-serif text-[#0B2545]">
+                  School Notices &amp; Events Management
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  Single source of truth for circulars and announcements synchronized across the homepage and <a href="/notices/" target="_blank" rel="noreferrer" className="text-[#C59B27] font-semibold hover:underline">/notices/</a>.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={loadNotices}
+                  disabled={noticesLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 hover:border-[#0B2545] text-slate-700 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-2xs"
+                  title="Refresh Notices"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${noticesLoading ? 'animate-spin text-[#C59B27]' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenCreateNotice}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
+                >
+                  <Plus className="w-4 h-4 text-[#C59B27]" />
+                  <span>Create Notice</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Search and Category Filter Bar */}
+            <div className="bg-white border border-slate-200 p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={noticeSearchQuery}
+                  onChange={(e) => setNoticeSearchQuery(e.target.value)}
+                  placeholder="Search notices by title, category, or description..."
+                  className="w-full pl-9 pr-3 py-2 border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0B2545]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter className="w-4 h-4 text-slate-400" />
+                <select
+                  value={noticeCategoryFilter}
+                  onChange={(e) => setNoticeCategoryFilter(e.target.value)}
+                  className="border border-slate-300 text-xs px-3 py-2 bg-white text-slate-700 w-full sm:w-auto outline-none focus:border-[#0B2545]"
+                >
+                  <option value="All">All Categories</option>
+                  <option value="Admissions">Admissions</option>
+                  <option value="Events">Events</option>
+                  <option value="Exams">Exams</option>
+                  <option value="Circular">Circular</option>
+                  <option value="Academic">Academic</option>
+                  <option value="Sports">Sports</option>
+                  <option value="General">General</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Notices Table */}
+            <div className="bg-white border border-slate-200 overflow-hidden shadow-2xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#0B2545] text-white uppercase text-[10.5px] font-bold tracking-wider">
+                    <tr>
+                      <th className="py-3.5 px-4 w-12 text-center">#</th>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Date &amp; Cat</th>
+                      <th className="py-3.5 px-4">Title &amp; Grades</th>
+                      <th className="py-3.5 px-4 text-center">Attachment</th>
+                      <th className="py-3.5 px-4 text-center">Status</th>
+                      <th className="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                    {noticesLoading ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#C59B27] mb-2" />
+                          <p className="text-xs">Loading notices from database...</p>
+                        </td>
+                      </tr>
+                    ) : noticesList.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-500">
+                          <Bell className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                          <p className="font-bold text-sm text-[#0B2545]">No notices recorded yet.</p>
+                          <p className="text-xs text-slate-500 mt-1">Click "Create Notice" above to publish your first school circular.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      noticesList
+                        .filter((n) => {
+                          const matchesSearch =
+                            !noticeSearchQuery.trim() ||
+                            n.title.toLowerCase().includes(noticeSearchQuery.toLowerCase()) ||
+                            n.description?.toLowerCase().includes(noticeSearchQuery.toLowerCase()) ||
+                            n.category.toLowerCase().includes(noticeSearchQuery.toLowerCase());
+                          const matchesCat =
+                            noticeCategoryFilter === 'All' ||
+                            n.category.toLowerCase() === noticeCategoryFilter.toLowerCase();
+                          return matchesSearch && matchesCat;
+                        })
+                        .map((n, idx) => (
+                          <tr key={n.id || idx} className="hover:bg-amber-50/20 transition-colors">
+                            <td className="py-3.5 px-4 text-center font-mono text-[11px] text-slate-400">
+                              {n.display_order ?? idx + 1}
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="block font-semibold text-slate-900 text-xs">{n.date}</span>
+                              <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9.5px] font-bold uppercase bg-slate-100 text-[#0B2545]">
+                                {n.category}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                                  {n.title}
+                                </span>
+                                {n.is_new && (
+                                  <span className="bg-emerald-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded">
+                                    New
+                                  </span>
+                                )}
+                              </div>
+                              {n.description && (
+                                <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                                  {n.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                {(Array.isArray(n.grades) ? n.grades : ['All Grades']).map((g) => (
+                                  <span key={g} className="text-[9.5px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-sans">
+                                    {g}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              {n.has_attachment ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                                  <FileText className="w-3 h-3 text-blue-600" />
+                                  <span>{n.file_size || 'PDF'}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">None</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <span
+                                className={`inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded ${
+                                  n.is_published
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-300'
+                                }`}
+                              >
+                                {n.is_published ? 'Published' : 'Draft'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePublishNotice(n)}
+                                  className="p-1.5 text-slate-500 hover:text-[#0B2545] hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                                  title={n.is_published ? 'Switch to Draft (Unpublish)' : 'Publish Notice'}
+                                  aria-label={n.is_published ? 'Unpublish notice' : 'Publish notice'}
+                                >
+                                  {n.is_published ? <EyeOff className="w-4 h-4 text-amber-600" /> : <Eye className="w-4 h-4 text-emerald-600" />}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditNotice(n)}
+                                  className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors cursor-pointer"
+                                  title="Edit Notice"
+                                  aria-label="Edit notice"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmNotice(n)}
+                                  className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                  title="Delete Notice"
+                                  aria-label="Delete notice"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Create / Edit Notice Modal */}
+            {isEditingNotice && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto"
+                onClick={() => !isSavingNotice && setIsEditingNotice(false)}
+              >
+                <div
+                  className="bg-white border border-slate-300 shadow-2xl max-w-2xl w-full p-6 sm:p-7 relative my-8 max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-5">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-[#C59B27]" />
+                      <h3 className="font-serif font-bold text-lg text-[#0B2545]">
+                        {editingNotice ? 'Edit Notice & Announcement' : 'Create & Publish Notice'}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => !isSavingNotice && setIsEditingNotice(false)}
+                      className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {noticeSaveMessage && (
+                    <div
+                      className={`p-3 text-xs mb-4 flex items-center gap-2 ${
+                        noticeSaveMessage.type === 'error'
+                          ? 'bg-rose-50 border border-rose-200 text-rose-800'
+                          : 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                      }`}
+                    >
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>{noticeSaveMessage.text}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveNotice} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Notice Title <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={noticeTitle}
+                        onChange={(e) => setNoticeTitle(e.target.value)}
+                        placeholder="e.g., Datesheet for Term Examinations 2026"
+                        className="w-full px-3 py-2 border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0B2545]"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Notice Date <span className="text-rose-600">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={noticeDate}
+                          onChange={(e) => setNoticeDate(e.target.value)}
+                          placeholder="e.g., Oct 18, 2026"
+                          className="w-full px-3 py-2 border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0B2545]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Category <span className="text-rose-600">*</span>
+                        </label>
+                        <select
+                          value={noticeCategory}
+                          onChange={(e) => setNoticeCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0B2545] bg-white"
+                        >
+                          <option value="Admissions">Admissions</option>
+                          <option value="Events">Events</option>
+                          <option value="Exams">Exams</option>
+                          <option value="Circular">Circular</option>
+                          <option value="Academic">Academic</option>
+                          <option value="Sports">Sports</option>
+                          <option value="General">General</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Description / Content Details
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={noticeDescription}
+                        onChange={(e) => setNoticeDescription(e.target.value)}
+                        placeholder="Detailed instructions or summary shown in notice expanded view..."
+                        className="w-full px-3 py-2 border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#0B2545]"
+                      />
+                    </div>
+
+                    {/* Grade Applicability Pills */}
+                    <div>
+                      <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                        Target Grades Applicability
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          'All Grades',
+                          'Jr. KG',
+                          'Sr. KG',
+                          'Grade 1',
+                          'Grade 2',
+                          'Grade 3',
+                          'Grade 4',
+                          'Grade 5',
+                          'Grade 6',
+                          'Grade 7',
+                          'Grade 8',
+                          'Grade 9',
+                          'Grade 10',
+                          'Grade 11',
+                          'Grade 12',
+                        ].map((g) => {
+                          const isSelected = noticeGrades.includes(g);
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => handleToggleGrade(g)}
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded border transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#0B2545] text-white border-[#0B2545]'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-400'
+                              }`}
+                            >
+                              {g}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Attachment Options */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded space-y-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={noticeHasAttachment}
+                          onChange={(e) => setNoticeHasAttachment(e.target.checked)}
+                          className="w-4 h-4 text-[#0B2545] rounded"
+                        />
+                        <span className="font-bold text-slate-700 text-xs">Includes Official Circular Attachment (PDF)</span>
+                      </label>
+
+                      {noticeHasAttachment && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/80">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              File Size Label
+                            </label>
+                            <input
+                              type="text"
+                              value={noticeFileSize}
+                              onChange={(e) => setNoticeFileSize(e.target.value)}
+                              placeholder="e.g., 340 KB"
+                              className="w-full px-2.5 py-1.5 border border-slate-300 text-xs text-slate-800 bg-white outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              Attachment URL (Optional Link)
+                            </label>
+                            <input
+                              type="text"
+                              value={noticeAttachmentUrl}
+                              onChange={(e) => setNoticeAttachmentUrl(e.target.value)}
+                              placeholder="https://... or /documents/..."
+                              className="w-full px-2.5 py-1.5 border border-slate-300 text-xs text-slate-800 bg-white outline-none"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Publish & Ordering Options */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={noticeIsNew}
+                            onChange={(e) => setNoticeIsNew(e.target.checked)}
+                            className="w-4 h-4 text-[#0B2545] rounded"
+                          />
+                          <span className="font-semibold text-slate-700 text-xs">Mark as "New" (shows green badge)</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={noticeIsPublished}
+                            onChange={(e) => setNoticeIsPublished(e.target.checked)}
+                            className="w-4 h-4 text-[#0B2545] rounded"
+                          />
+                          <span className="font-bold text-slate-800 text-xs">
+                            {noticeIsPublished ? 'Publish immediately (Visible to public)' : 'Save as Draft (Admin only)'}
+                          </span>
+                        </label>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                          Display Priority / Order
+                        </label>
+                        <input
+                          type="number"
+                          value={noticeDisplayOrder}
+                          onChange={(e) => setNoticeDisplayOrder(parseInt(e.target.value, 10) || 0)}
+                          className="w-full px-3 py-1.5 border border-slate-300 text-xs text-slate-800 outline-none"
+                        />
+                        <span className="text-[10px] text-slate-400">Lower numbers appear first.</span>
+                      </div>
+                    </div>
+
+                    {/* Form Buttons */}
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => !isSavingNotice && setIsEditingNotice(false)}
+                        disabled={isSavingNotice}
+                        className="px-4 py-2 border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={isSavingNotice}
+                        className="inline-flex items-center gap-2 px-5 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold transition-colors cursor-pointer shadow-sm"
+                      >
+                        {isSavingNotice ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-3.5 h-3.5 text-[#C59B27]" />
+                            <span>{editingNotice ? 'Update Notice' : 'Publish Notice'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmNotice && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4"
+                onClick={() => !isDeletingNotice && setDeleteConfirmNotice(null)}
+              >
+                <div
+                  className="bg-white border border-slate-300 shadow-2xl max-w-md w-full p-6 relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3 text-rose-600 mb-3">
+                    <AlertTriangle className="w-6 h-6 shrink-0" />
+                    <h3 className="font-serif font-bold text-base text-[#0B2545]">
+                      Confirm Notice Deletion
+                    </h3>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                    Are you sure you want to permanently delete the notice:
+                    <strong className="block text-slate-900 mt-1 font-semibold">"{deleteConfirmNotice.title}"</strong>
+                    This notice will be removed from both the homepage notice board and the <span className="font-semibold text-[#0B2545]">/notices/</span> archive.
+                  </p>
+
+                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                    <button
+                      type="button"
+                      disabled={isDeletingNotice}
+                      onClick={() => setDeleteConfirmNotice(null)}
+                      className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isDeletingNotice}
+                      onClick={handleDeleteNoticeConfirmed}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    >
+                      {isDeletingNotice ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Deleting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Notice</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 

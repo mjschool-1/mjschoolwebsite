@@ -218,50 +218,55 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 export const FlashNews: React.FC = () => {
   const [newsIndex, setNewsIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const hasMultipleAlerts = FLASH_NEWS.length > 1;
 
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || !hasMultipleAlerts) return;
     const interval = setInterval(() => {
       setNewsIndex((prev) => (prev + 1) % FLASH_NEWS.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, hasMultipleAlerts]);
+
+  const currentAlert = FLASH_NEWS[newsIndex] || FLASH_NEWS[0] || 'Admissions 2026 are now open!';
 
   return (
     <div className="bg-[#133E6E] text-white border-b border-[#0B2545]/30">
       <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2">
         {/* Mobile View (< md): Compact Two-Row Layout */}
         <div className="flex flex-col md:hidden gap-1.5 py-0.5">
-          {/* Row 1: ALERTS Badge + Slide Counter & Play/Pause Controls */}
+          {/* Row 1: ALERTS Badge + (Slide Counter & Play/Pause Controls if multiple) */}
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center gap-1.5 bg-[#C59B27] text-[#0B2545] font-black uppercase text-[10px] px-2.5 py-0.5 rounded shadow-sm shrink-0">
               <Bell className="w-3 h-3 animate-bounce shrink-0" />
               <span>ALERTS</span>
             </span>
 
-            <div className="flex items-center gap-2 text-slate-300 shrink-0">
-              <span className="text-[10px] text-slate-300 font-medium">
-                {newsIndex + 1} of {FLASH_NEWS.length}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="p-1 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
-                title={isPlaying ? 'Pause ticker' : 'Play ticker'}
-                aria-label={isPlaying ? 'Pause ticker' : 'Play ticker'}
-              >
-                {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              </button>
-            </div>
+            {hasMultipleAlerts && (
+              <div className="flex items-center gap-2 text-slate-300 shrink-0">
+                <span className="text-[10px] text-slate-300 font-medium">
+                  {newsIndex + 1} of {FLASH_NEWS.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="p-1 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+                  title={isPlaying ? 'Pause ticker' : 'Play ticker'}
+                  aria-label={isPlaying ? 'Pause ticker' : 'Play ticker'}
+                >
+                  {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Row 2: Full Notice Text (No Truncation, Natural Wrap if Needed) */}
+          {/* Row 2: Notice Text */}
           <div className="w-full">
             <p
               key={newsIndex}
               className="text-[11.5px] min-[360px]:text-xs text-slate-100 font-medium leading-snug animate-fadeIn"
             >
-              {FLASH_NEWS[newsIndex]}
+              {currentAlert}
             </p>
           </div>
         </div>
@@ -276,28 +281,30 @@ export const FlashNews: React.FC = () => {
             </span>
           </div>
 
-          {/* News text carousel */}
-          <div className="flex-1 overflow-hidden relative h-5">
-            <p key={newsIndex} className="truncate text-slate-100 font-medium animate-fadeIn">
-              {FLASH_NEWS[newsIndex]}
+          {/* News text ticker */}
+          <div className="flex-1 overflow-hidden relative h-5 flex items-center">
+            <p key={newsIndex} className="text-slate-100 font-medium animate-fadeIn">
+              {currentAlert}
             </p>
           </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-2 shrink-0 text-slate-300">
-            <span className="text-[10px] text-slate-400">
-              {newsIndex + 1} of {FLASH_NEWS.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="p-1 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
-              title={isPlaying ? 'Pause ticker' : 'Play ticker'}
-              aria-label={isPlaying ? 'Pause ticker' : 'Play ticker'}
-            >
-              {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-            </button>
-          </div>
+          {/* Controls (shown only when multiple alerts exist) */}
+          {hasMultipleAlerts && (
+            <div className="flex items-center gap-2 shrink-0 text-slate-300">
+              <span className="text-[10px] text-slate-400">
+                {newsIndex + 1} of {FLASH_NEWS.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="p-1 hover:text-white hover:bg-white/10 rounded transition-colors cursor-pointer"
+                title={isPlaying ? 'Pause ticker' : 'Play ticker'}
+                aria-label={isPlaying ? 'Pause ticker' : 'Play ticker'}
+              >
+                {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

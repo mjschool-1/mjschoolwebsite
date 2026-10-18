@@ -42,6 +42,24 @@ export interface AdminUserRecord {
   created_at?: string;
 }
 
+export interface NoticeRecord {
+  id: string;
+  title: string;
+  date: string;
+  category: string;
+  is_new: boolean;
+  grades: string[];
+  description: string;
+  has_attachment: boolean;
+  attachment_url?: string | null;
+  file_size?: string | null;
+  is_published: boolean;
+  display_order: number;
+  created_at?: string;
+  updated_at?: string;
+  updated_by?: string | null;
+}
+
 // Safely obtain environment variables (compatible with Astro / Vite on Cloudflare)
 const supabaseUrl = (import.meta.env.PUBLIC_SUPABASE_URL || '').trim();
 const supabaseAnonKey = (import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '').trim();
@@ -285,4 +303,244 @@ export async function verifyStaffAuthorization(
     return { authorized: false, error: err?.message || 'Staff authorization check failed.' };
   }
 }
+
+// Verified local default notices used as failover and seed reference
+export const DEFAULT_NOTICES: NoticeRecord[] = [
+  {
+    id: 'notice-1',
+    title: 'Admission Schedule & Verification Guidelines for Session 2025-26',
+    date: 'Oct 04, 2025',
+    category: 'Admissions',
+    is_new: true,
+    grades: ['All Grades'],
+    description:
+      'Detailed instructions regarding document submission, verification timeline, and registration confirmation for all prospective students for the upcoming academic session 2025-26.',
+    has_attachment: true,
+    attachment_url: null,
+    file_size: '340 KB',
+    is_published: true,
+    display_order: 1,
+    created_at: '2025-10-04T00:00:00Z',
+    updated_at: '2025-10-04T00:00:00Z',
+    updated_by: 'MJ School System',
+  },
+  {
+    id: 'notice-2',
+    title: 'Kindergarten Rhyme & Storytelling Celebration 2025',
+    date: 'Oct 01, 2025',
+    category: 'Events',
+    is_new: true,
+    grades: ['Jr. KG', 'Sr. KG'],
+    description:
+      'An interactive stage event celebrating early speech, recitation, and dramatic storytelling for pre-primary scholars. Parents are cordially invited to attend the morning assembly.',
+    has_attachment: true,
+    attachment_url: null,
+    file_size: '180 KB',
+    is_published: true,
+    display_order: 2,
+    created_at: '2025-10-01T00:00:00Z',
+    updated_at: '2025-10-01T00:00:00Z',
+    updated_by: 'MJ School System',
+  },
+  {
+    id: 'notice-3',
+    title: 'Datesheet for Half-Yearly Examinations - Grade VI to XII',
+    date: 'Sep 28, 2025',
+    category: 'Exams',
+    is_new: true,
+    grades: ['Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
+    description:
+      'Official schedule for the Term-I / Half-Yearly theoretical and practical examinations. Students are advised to review reporting times and syllabus portions with respective subject teachers.',
+    has_attachment: true,
+    attachment_url: null,
+    file_size: '512 KB',
+    is_published: true,
+    display_order: 3,
+    created_at: '2025-09-28T00:00:00Z',
+    updated_at: '2025-09-28T00:00:00Z',
+    updated_by: 'MJ School System',
+  },
+];
+
+/**
+ * Fetch all published notices for public views (homepage and /notices/).
+ * Falls back safely to DEFAULT_NOTICES if Supabase is unconfigured, table is missing, or query fails.
+ */
+export async function getPublishedNotices(): Promise<NoticeRecord[]> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return DEFAULT_NOTICES;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('notices')
+      .select('*')
+      .eq('is_published', true)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[getPublishedNotices] Database query returned error, using fallback notices:', error.message);
+      return DEFAULT_NOTICES;
+    }
+
+    if (!data || data.length === 0) {
+      return DEFAULT_NOTICES;
+    }
+
+    return data.map((n: any, idx: number) => ({
+      ...n,
+      grades: Array.isArray(n.grades) ? n.grades : ['All Grades'],
+      is_new: Boolean(n.is_new),
+      has_attachment: Boolean(n.has_attachment),
+      is_published: Boolean(n.is_published),
+      display_order: typeof n.display_order === 'number' ? n.display_order : idx + 1,
+    })) as NoticeRecord[];
+  } catch (err) {
+    console.warn('[getPublishedNotices] Failover to default notices due to exception:', err);
+    return DEFAULT_NOTICES;
+  }
+}
+
+/**
+ * Fetch all notices (both published and drafts) for administrator portal management.
+ */
+export async function getAllNotices(): Promise<NoticeRecord[]> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return DEFAULT_NOTICES;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('notices')
+      .select('*')
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[getAllNotices] Database query returned error, using fallback notices:', error.message);
+      return DEFAULT_NOTICES;
+    }
+
+    if (!data || data.length === 0) {
+      return DEFAULT_NOTICES;
+    }
+
+    return data.map((n: any, idx: number) => ({
+      ...n,
+      grades: Array.isArray(n.grades) ? n.grades : ['All Grades'],
+      is_new: Boolean(n.is_new),
+      has_attachment: Boolean(n.has_attachment),
+      is_published: Boolean(n.is_published),
+      display_order: typeof n.display_order === 'number' ? n.display_order : idx + 1,
+    })) as NoticeRecord[];
+  } catch (err) {
+    console.warn('[getAllNotices] Exception while fetching notices, using fallback:', err);
+    return DEFAULT_NOTICES;
+  }
+}
+
+/**
+ * Create a new notice record in Supabase.
+ */
+export async function createNotice(
+  notice: Omit<NoticeRecord, 'id' | 'created_at' | 'updated_at'>
+): Promise<{ success: boolean; data?: NoticeRecord; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('notices')
+      .insert({
+        title: notice.title,
+        date: notice.date,
+        category: notice.category,
+        is_new: notice.is_new,
+        grades: notice.grades,
+        description: notice.description,
+        has_attachment: notice.has_attachment,
+        attachment_url: notice.attachment_url || null,
+        file_size: notice.file_size || null,
+        is_published: notice.is_published,
+        display_order: notice.display_order,
+        updated_by: notice.updated_by || 'Admin',
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as NoticeRecord };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to create notice.' };
+  }
+}
+
+/**
+ * Update an existing notice record in Supabase.
+ */
+export async function updateNotice(
+  id: string,
+  updates: Partial<NoticeRecord>
+): Promise<{ success: boolean; data?: NoticeRecord; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const payload: any = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    delete payload.id;
+    delete payload.created_at;
+
+    const { data, error } = await supabase
+      .from('notices')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data as NoticeRecord };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update notice.' };
+  }
+}
+
+/**
+ * Delete a notice record from Supabase.
+ */
+export async function deleteNotice(
+  id: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('notices')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to delete notice.' };
+  }
+}
+
 

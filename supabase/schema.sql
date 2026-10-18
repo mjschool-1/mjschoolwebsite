@@ -366,3 +366,68 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.fee_receipts TO authenticated;
 --    WHERE email = 'admin@mjschool.in'
 --    ON CONFLICT (id) DO UPDATE SET is_active = true, role = 'super_admin';
 
+-- ==============================================================================
+-- 8. Notices and Events Board Table (Single Source of Truth)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.notices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    date TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'General',
+    is_new BOOLEAN NOT NULL DEFAULT TRUE,
+    grades TEXT[] NOT NULL DEFAULT ARRAY['All Grades']::TEXT[],
+    description TEXT NOT NULL DEFAULT '',
+    has_attachment BOOLEAN NOT NULL DEFAULT FALSE,
+    attachment_url TEXT,
+    file_size TEXT,
+    is_published BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_notices_published_order 
+ON public.notices (is_published, display_order ASC, created_at DESC);
+
+GRANT SELECT ON TABLE public.notices TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.notices TO authenticated;
+
+ALTER TABLE public.notices ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read of published notices" ON public.notices;
+CREATE POLICY "Allow public read of published notices"
+    ON public.notices
+    FOR SELECT
+    USING (is_published = true);
+
+DROP POLICY IF EXISTS "Allow authorized staff read all notices" ON public.notices;
+CREATE POLICY "Allow authorized staff read all notices"
+    ON public.notices
+    FOR SELECT
+    TO authenticated
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Allow authorized staff insert notices" ON public.notices;
+CREATE POLICY "Allow authorized staff insert notices"
+    ON public.notices
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Allow authorized staff update notices" ON public.notices;
+CREATE POLICY "Allow authorized staff update notices"
+    ON public.notices
+    FOR UPDATE
+    TO authenticated
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Allow authorized staff delete notices" ON public.notices;
+CREATE POLICY "Allow authorized staff delete notices"
+    ON public.notices
+    FOR DELETE
+    TO authenticated
+    USING (public.is_admin());
+
+

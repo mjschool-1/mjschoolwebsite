@@ -31,24 +31,13 @@ export const AboutSchoolSection: React.FC = () => {
             </p>
           </div>
 
-          {/* School Campus Visual */}
+          {/* School Campus Visual Placeholder */}
           <div className="lg:col-span-5 relative">
-            <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white">
-              <img
-                src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1000&q=80"
-                alt="MJ School Campus Building"
-                className="w-full h-72 sm:h-80 object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B2545]/90 via-transparent to-transparent flex items-end p-5">
-                <div className="text-white">
-                  <span className="text-xs text-[#F6D55C] font-bold uppercase tracking-wider block">
-                    Campus Infrastructure
-                  </span>
-                  <h4 className="text-base font-bold">Lush Green Learning Sanctuary</h4>
-                  <p className="text-xs text-slate-200 mt-0.5">
-                    Equipped with modern eco-buildings, smart learning spaces, and standard sports facilities.
-                  </p>
-                </div>
+            <div className="relative rounded-2xl overflow-hidden shadow-sm border-2 border-slate-200 bg-slate-100 h-72 sm:h-80 flex flex-col justify-end p-5">
+              <div>
+                <span className="inline-block bg-[#0B2545] text-[#F6D55C] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded">
+                  CAMPUS INFRASTRUCTURE
+                </span>
               </div>
             </div>
           </div>

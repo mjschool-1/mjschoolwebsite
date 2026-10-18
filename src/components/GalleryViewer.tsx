@@ -92,31 +92,52 @@ export const GalleryViewer: React.FC<GalleryViewerProps> = ({ items }) => {
     <>
       {/* 3-Column Desktop Grid / 1-Column Mobile Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-        {items.map((item, index) => (
-          <button
-            key={item.title}
-            type="button"
-            onClick={() => setActiveIndex(index)}
-            className="group relative block w-full text-left overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C59B27] aspect-[4/3] sm:aspect-[4/3] md:aspect-[3/2] lg:aspect-[4/3]"
-            aria-label={`Open full resolution image: ${item.title}`}
-          >
-            {/* Card Image */}
-            <img
-              src={item.image}
-              alt={item.alt}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-            />
+        {items.map((item, index) => {
+          const hasImage = Boolean(item.image && item.image.trim().length > 0);
 
-            {/* Overlaid Title with Subtle Navy/Gold Brand Contrast */}
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0B2545]/90 via-[#0B2545]/55 to-transparent pt-12 pb-5 px-5 sm:px-6 flex flex-col justify-end">
-              <div className="w-8 h-0.5 bg-[#C59B27] mb-2 transition-all duration-300 group-hover:w-12"></div>
-              <h2 className="text-white font-serif font-bold text-lg sm:text-xl tracking-wide leading-snug drop-shadow-sm">
-                {item.title}
-              </h2>
-            </div>
-          </button>
-        ))}
+          if (!hasImage) {
+            return (
+              <div
+                key={item.title}
+                className="relative block w-full text-left overflow-hidden border border-slate-200 bg-slate-100 aspect-[4/3] sm:aspect-[4/3] md:aspect-[3/2] lg:aspect-[4/3] flex flex-col justify-end"
+              >
+                {/* Title area with Navy/Gold brand framing */}
+                <div className="bg-[#0B2545] pt-4 pb-4 px-5 sm:px-6">
+                  <div className="w-8 h-0.5 bg-[#C59B27] mb-2"></div>
+                  <h2 className="text-white font-serif font-bold text-base sm:text-lg tracking-wide leading-snug">
+                    {item.title}
+                  </h2>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <button
+              key={item.title}
+              type="button"
+              onClick={() => setActiveIndex(index)}
+              className="group relative block w-full text-left overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C59B27] aspect-[4/3] sm:aspect-[4/3] md:aspect-[3/2] lg:aspect-[4/3]"
+              aria-label={`Open full resolution image: ${item.title}`}
+            >
+              {/* Card Image */}
+              <img
+                src={item.image}
+                alt={item.alt}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+              />
+
+              {/* Overlaid Title with Subtle Navy/Gold Brand Contrast */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0B2545]/90 via-[#0B2545]/55 to-transparent pt-12 pb-5 px-5 sm:px-6 flex flex-col justify-end">
+                <div className="w-8 h-0.5 bg-[#C59B27] mb-2 transition-all duration-300 group-hover:w-12"></div>
+                <h2 className="text-white font-serif font-bold text-lg sm:text-xl tracking-wide leading-snug drop-shadow-sm">
+                  {item.title}
+                </h2>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Full-Resolution Lightbox Viewer */}

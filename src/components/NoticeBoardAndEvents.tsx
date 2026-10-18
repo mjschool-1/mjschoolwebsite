@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { NOTICES_LIST } from '../data/schoolData';
+import React, { useState, useEffect } from 'react';
+import { getPublishedNotices, DEFAULT_NOTICES, NoticeRecord } from '../lib/supabase';
 import { Download, ChevronDown, Check, RotateCcw } from 'lucide-react';
 
 const FILTERABLE_GRADES = [
@@ -13,15 +13,36 @@ const FILTERABLE_GRADES = [
 ];
 
 export const NoticeBoardAndEvents: React.FC = () => {
+  // Notices state fetched from Supabase (with DEFAULT_NOTICES fallback)
+  const [notices, setNotices] = useState<NoticeRecord[]>(DEFAULT_NOTICES);
+
   // Filter states: pending checkbox selection vs applied filter selection
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [appliedGrades, setAppliedGrades] = useState<string[]>([]);
   
   // Expanded notice item state (supports toggle per item)
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
   // Mobile filter collapse toggle
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadNotices() {
+      try {
+        const records = await getPublishedNotices();
+        if (isMounted && records && records.length > 0) {
+          setNotices(records);
+        }
+      } catch (err) {
+        console.warn('[NoticeBoard] Failover: retaining default notices.', err);
+      }
+    }
+    loadNotices();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const toggleGradeSelection = (grade: string) => {
     setSelectedGrades((prev) =>
@@ -44,15 +65,16 @@ export const NoticeBoardAndEvents: React.FC = () => {
     setAppliedGrades([]);
   };
 
-  const toggleExpand = (id: number) => {
+  const toggleExpand = (id: string | number) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
   // Filter notices logic: matches any applied grade, or notices marked for 'All Grades'
-  const filteredNotices = NOTICES_LIST.filter((notice) => {
+  const filteredNotices = notices.filter((notice) => {
     if (appliedGrades.length === 0) return true; // All Grades
-    if (notice.grades.includes('All Grades')) return true;
-    return appliedGrades.some((g) => notice.grades.includes(g));
+    const noticeGrades = Array.isArray(notice.grades) ? notice.grades : ['All Grades'];
+    if (noticeGrades.includes('All Grades')) return true;
+    return appliedGrades.some((g) => noticeGrades.includes(g));
   });
 
   return (
@@ -263,7 +285,7 @@ export const NoticeBoardAndEvents: React.FC = () => {
                                 <h4 className="text-sm sm:text-[15px] font-bold text-[#0B2545] group-hover:text-[#C59B27] transition-colors leading-snug">
                                   {notice.title}
                                 </h4>
-                                {notice.isNew && (
+                                {(notice.is_new ?? (notice as any).isNew) && (
                                   <span className="inline-block text-[9.5px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 px-1.5 py-0.2 rounded shrink-0">
                                     New
                                   </span>
@@ -301,11 +323,11 @@ export const NoticeBoardAndEvents: React.FC = () => {
                                 <div className="text-slate-500 text-[11.5px]">
                                   <span>Applicable to: </span>
                                   <span className="font-semibold text-slate-700">
-                                    {notice.grades.join(', ')}
+                                    {(Array.isArray(notice.grades) ? notice.grades : ['All Grades']).join(', ')}
                                   </span>
                                 </div>
 
-                                {notice.hasAttachment && (
+                                {(notice.has_attachment ?? (notice as any).hasAttachment) && (
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -315,7 +337,7 @@ export const NoticeBoardAndEvents: React.FC = () => {
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0B2545] hover:text-[#C59B27] py-1 px-2.5 rounded bg-white border border-slate-200 hover:border-[#C59B27] shadow-2xs transition-colors cursor-pointer"
                                   >
                                     <Download className="w-3.5 h-3.5 text-[#C59B27]" />
-                                    <span>Download Circular {notice.fileSize ? `(${notice.fileSize})` : ''}</span>
+                                    <span>Download Circular {(notice.file_size || (notice as any).fileSize) ? `(${notice.file_size || (notice as any).fileSize})` : ''}</span>
                                   </button>
                                 )}
                               </div>
