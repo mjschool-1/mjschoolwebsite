@@ -32,6 +32,22 @@ AS $$
   );
 $$;
 
+-- Helper function to evaluate super administrator status with SECURITY DEFINER (avoids recursive RLS)
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.admin_users
+    WHERE id = auth.uid()
+      AND role = 'super_admin'
+      AND is_active = true
+  );
+$$;
+
 -- RLS: Authenticated user can check if their own UID is an active administrator
 DROP POLICY IF EXISTS "Users can check their own admin status" ON public.admin_users;
 CREATE POLICY "Users can check their own admin status"
@@ -46,22 +62,8 @@ CREATE POLICY "Super admins manage admin_users"
     ON public.admin_users
     FOR ALL
     TO authenticated
-    USING (
-      EXISTS (
-        SELECT 1 FROM public.admin_users
-        WHERE id = auth.uid()
-          AND role = 'super_admin'
-          AND is_active = true
-      )
-    )
-    WITH CHECK (
-      EXISTS (
-        SELECT 1 FROM public.admin_users
-        WHERE id = auth.uid()
-          AND role = 'super_admin'
-          AND is_active = true
-      )
-    );
+    USING (public.is_super_admin())
+    WITH CHECK (public.is_super_admin());
 
 -- ==============================================================================
 -- 2. site_banners Table & Hardened Policies

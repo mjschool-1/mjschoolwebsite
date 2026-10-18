@@ -61,6 +61,12 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
             className="w-full h-full object-cover"
             loading="eager"
             fetchPriority="high"
+            onError={() => {
+              const fallbackMobile = resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png');
+              const fallbackDesktop = resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.desktop_image_path, 'hero-desktop.png');
+              if (mobileSrc !== fallbackMobile) setMobileSrc(fallbackMobile);
+              if (desktopSrc !== fallbackDesktop) setDesktopSrc(fallbackDesktop);
+            }}
           />
         </picture>
       </div>
