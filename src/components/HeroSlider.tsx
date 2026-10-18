@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FLASH_NEWS } from '../data/schoolData';
 import { Bell, Pause, Play } from 'lucide-react';
-import { getPublishedBanner, DEFAULT_HOMEPAGE_BANNER } from '../lib/supabase';
+import {
+  getPublishedBanners,
+  DEFAULT_HOMEPAGE_BANNER,
+  SiteBannerRecord,
+} from '../lib/supabase';
 
 interface HeroSliderProps {
   onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
@@ -19,56 +23,193 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   initialDesktopBanner,
   initialMobileBanner,
 }) => {
-  const [desktopSrc, setDesktopSrc] = useState<string>(() =>
-    resolveBannerUrl(initialDesktopBanner || DEFAULT_HOMEPAGE_BANNER.desktop_image_path, 'hero-desktop.png')
-  );
-  const [mobileSrc, setMobileSrc] = useState<string>(() =>
-    resolveBannerUrl(initialMobileBanner || DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png')
-  );
+  // Initial fallback banner based on props or verified local defaults
+  const initialBanner: SiteBannerRecord = {
+    ...DEFAULT_HOMEPAGE_BANNER,
+    desktop_image_path: initialDesktopBanner || DEFAULT_HOMEPAGE_BANNER.desktop_image_path,
+    mobile_image_path: initialMobileBanner || DEFAULT_HOMEPAGE_BANNER.mobile_image_path,
+  };
 
+  const [banners, setBanners] = useState<SiteBannerRecord[]>([initialBanner]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [isTabVisible, setIsTabVisible] = useState<boolean>(true);
+  const [fallbackErrors, setFallbackErrors] = useState<Record<string, boolean>>({});
+
+  // 1. Fetch all published banners from Supabase
   useEffect(() => {
     let isMounted = true;
-    async function loadBanner() {
+    async function loadBanners() {
       try {
-        const record = await getPublishedBanner('homepage');
-        if (isMounted && record) {
-          if (record.desktop_image_path) {
-            setDesktopSrc(resolveBannerUrl(record.desktop_image_path, 'hero-desktop.png'));
-          }
-          if (record.mobile_image_path) {
-            setMobileSrc(resolveBannerUrl(record.mobile_image_path, 'hero-mobile.png'));
-          }
+        const publishedBanners = await getPublishedBanners('homepage');
+        if (isMounted && publishedBanners && publishedBanners.length > 0) {
+          setBanners(publishedBanners);
+          setCurrentIndex((prev) => (prev >= publishedBanners.length ? 0 : prev));
         }
-      } catch (e) {
-        // Failover remains silently on default assets
+      } catch (err) {
+        console.warn('[HeroSlider] Failover: retaining default banner asset.', err);
       }
     }
-    loadBanner();
+
+    loadBanners();
     return () => {
       isMounted = false;
     };
   }, []);
 
+  // 2. Handle document visibility (pause when browser tab is inactive)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabVisible(!document.hidden);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // 3. Carousel automatic rotation timer (every 3 seconds)
+  useEffect(() => {
+    // If only one banner, or hovered, or tab is hidden, do not rotate
+    if (banners.length <= 1 || isHovered || !isTabVisible) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % banners.length);
+    }, 3000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [banners.length, isHovered, isTabVisible]);
+
+  // Navigate directly to a specific slide
+  const goToSlide = useCallback((index: number) => {
+    setCurrentIndex(index);
+  }, []);
+
+  // Handle individual image load failures safely
+  const handleImageError = (bannerId: string | undefined, index: number) => {
+    const key = bannerId || `slide-${index}`;
+    setFallbackErrors((prev) => ({ ...prev, [key]: true }));
+  };
+
+  const hasMultipleBanners = banners.length > 1;
+
   return (
-    <div className="relative bg-slate-900 overflow-hidden">
-      {/* Background Hero Banner Frame: Aspect Ratio matched to 535x378 (mobile) & 1920x640 (desktop) */}
-      <div className="relative w-full aspect-[535/378] md:aspect-[1920/640] overflow-hidden">
-        <picture className="w-full h-full block">
-          <source media="(min-width: 768px)" srcSet={desktopSrc} />
-          <img
-            src={mobileSrc}
-            alt="MJ School Banner"
-            className="w-full h-full object-cover"
-            loading="eager"
-            fetchPriority="high"
-            onError={() => {
-              const fallbackMobile = resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png');
-              const fallbackDesktop = resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.desktop_image_path, 'hero-desktop.png');
-              if (mobileSrc !== fallbackMobile) setMobileSrc(fallbackMobile);
-              if (desktopSrc !== fallbackDesktop) setDesktopSrc(fallbackDesktop);
-            }}
-          />
-        </picture>
+    <div
+      className="relative bg-slate-900 overflow-hidden select-none"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="MJ School Featured Announcements and Campus Life"
+    >
+      {/* Background Hero Banner Container: Matched to 535x378 (mobile) & 1920x640 (desktop) */}
+      <div className="relative w-full aspect-[535/378] md:aspect-[1920/640] overflow-hidden bg-slate-950">
+        {hasMultipleBanners ? (
+          /* Multi-banner sliding track */
+          <div
+            className="flex h-full w-full transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          >
+            {banners.map((banner, index) => {
+              const key = banner.id || `banner-${index}`;
+              const hasError = fallbackErrors[key];
+
+              const desktopUrl = hasError
+                ? resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.desktop_image_path, 'hero-desktop.png')
+                : resolveBannerUrl(banner.desktop_image_path, 'hero-desktop.png');
+
+              const mobileUrl = hasError
+                ? resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png')
+                : resolveBannerUrl(banner.mobile_image_path, 'hero-mobile.png');
+
+              return (
+                <div
+                  key={key}
+                  className="min-w-full w-full h-full shrink-0 relative"
+                  role="group"
+                  aria-roledescription="slide"
+                  aria-label={`${index + 1} of ${banners.length}: ${banner.title || 'Campus Banner'}`}
+                  aria-hidden={currentIndex !== index}
+                >
+                  <picture className="w-full h-full block">
+                    <source media="(min-width: 768px)" srcSet={desktopUrl} />
+                    <img
+                      src={mobileUrl}
+                      alt={banner.title || `MJ School Banner ${index + 1}`}
+                      className="w-full h-full object-cover"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      fetchPriority={index === 0 ? 'high' : 'auto'}
+                      onError={() => handleImageError(banner.id, index)}
+                    />
+                  </picture>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Single Banner: static display without sliding tracks or overhead */
+          <div className="w-full h-full relative">
+            {(() => {
+              const single = banners[0] || initialBanner;
+              const hasError = fallbackErrors[single.id || 'single'];
+
+              const desktopUrl = hasError
+                ? resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.desktop_image_path, 'hero-desktop.png')
+                : resolveBannerUrl(single.desktop_image_path, 'hero-desktop.png');
+
+              const mobileUrl = hasError
+                ? resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png')
+                : resolveBannerUrl(single.mobile_image_path, 'hero-mobile.png');
+
+              return (
+                <picture className="w-full h-full block">
+                  <source media="(min-width: 768px)" srcSet={desktopUrl} />
+                  <img
+                    src={mobileUrl}
+                    alt={single.title || 'MJ School Banner'}
+                    className="w-full h-full object-cover"
+                    loading="eager"
+                    fetchPriority="high"
+                    onError={() => handleImageError(single.id, 0)}
+                  />
+                </picture>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Navigation Indicator: Pill-style at bottom centre (only if > 1 banner) */}
+        {hasMultipleBanners && (
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            <nav
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 bg-[#0B2545]/80 backdrop-blur-md rounded-full border border-white/20 shadow-lg"
+              aria-label="Carousel Banner Indicators"
+            >
+              {banners.map((banner, index) => {
+                const isActive = currentIndex === index;
+                return (
+                  <button
+                    key={banner.id || `dot-${index}`}
+                    type="button"
+                    onClick={() => goToSlide(index)}
+                    aria-label={`Go to slide ${index + 1}: ${banner.title || 'Banner'}`}
+                    aria-current={isActive ? 'true' : 'false'}
+                    className={`transition-all duration-300 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#C59B27] ${
+                      isActive
+                        ? 'w-5 sm:w-6 h-2 bg-[#C59B27] shadow-sm'
+                        : 'w-2 h-2 bg-white/50 hover:bg-white/90'
+                    }`}
+                  />
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -89,7 +230,6 @@ export const FlashNews: React.FC = () => {
   return (
     <div className="bg-[#133E6E] text-white border-b border-[#0B2545]/30">
       <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2">
-        
         {/* Mobile View (< md): Compact Two-Row Layout */}
         <div className="flex flex-col md:hidden gap-1.5 py-0.5">
           {/* Row 1: ALERTS Badge + Slide Counter & Play/Pause Controls */}
@@ -159,7 +299,6 @@ export const FlashNews: React.FC = () => {
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

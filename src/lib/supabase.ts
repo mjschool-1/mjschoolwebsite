@@ -4,9 +4,12 @@ export interface SiteBannerRecord {
   id?: string;
   page_key: string;
   page_path: string;
+  title: string;
   desktop_image_path: string;
   mobile_image_path: string;
   is_published: boolean;
+  display_order: number;
+  created_at?: string;
   updated_at?: string;
   updated_by?: string;
 }
@@ -70,40 +73,145 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured()
 
 // Verified local default assets used as failover
 export const DEFAULT_HOMEPAGE_BANNER: SiteBannerRecord = {
+  id: 'default-homepage-banner',
   page_key: 'homepage',
   page_path: '/',
+  title: 'Main School Hero Banner',
   desktop_image_path: '/hero-desktop.png',
   mobile_image_path: '/hero-mobile.png',
   is_published: true,
+  display_order: 0,
   updated_at: new Date().toISOString(),
   updated_by: 'MJ School System',
 };
 
 /**
- * Fetch the active published banner for a specific page.
- * Falls back to default local assets if Supabase is unconfigured, unreachable, or record is missing.
+ * Fetch all active published banners for a specific page, ordered deterministically.
+ * Falls back to default local assets if Supabase is unconfigured, unreachable, or records are missing.
  */
-export async function getPublishedBanner(pageKey: string): Promise<SiteBannerRecord> {
+export async function getPublishedBanners(pageKey: string = 'homepage'): Promise<SiteBannerRecord[]> {
   if (!supabase || !isSupabaseConfigured()) {
-    return DEFAULT_HOMEPAGE_BANNER;
+    return [DEFAULT_HOMEPAGE_BANNER];
   }
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('site_banners')
       .select('*')
       .eq('page_key', pageKey)
       .eq('is_published', true)
-      .maybeSingle();
+      .order('display_order', { ascending: true });
 
-    if (error || !data) {
-      return DEFAULT_HOMEPAGE_BANNER;
+    // Fallback if display_order column is not yet in the database or schema cache
+    if (error && error.message?.includes('display_order')) {
+      console.warn('[getPublishedBanners] display_order column missing in schema cache; querying without display_order.');
+      const fallback = await supabase
+        .from('site_banners')
+        .select('*')
+        .eq('page_key', pageKey)
+        .eq('is_published', true);
+      data = fallback.data;
+      error = fallback.error;
     }
 
-    return data as SiteBannerRecord;
+    if (error || !data || data.length === 0) {
+      return [DEFAULT_HOMEPAGE_BANNER];
+    }
+
+    return data.map((b: any, idx: number) => ({
+      ...b,
+      title: b.title || `Homepage Banner ${idx + 1}`,
+      display_order: b.display_order ?? idx,
+    })) as SiteBannerRecord[];
   } catch (err) {
-    console.warn(`[getPublishedBanner] Failover to default banner for ${pageKey}:`, err);
-    return DEFAULT_HOMEPAGE_BANNER;
+    console.warn(`[getPublishedBanners] Failover to default banner for ${pageKey}:`, err);
+    return [DEFAULT_HOMEPAGE_BANNER];
+  }
+}
+
+/**
+ * Fetch the active published banner for a specific page (backward-compatible).
+ */
+export async function getPublishedBanner(pageKey: string = 'homepage'): Promise<SiteBannerRecord> {
+  const banners = await getPublishedBanners(pageKey);
+  return banners[0] || DEFAULT_HOMEPAGE_BANNER;
+}
+
+/**
+ * Fetch all banners (published and drafts) for admin management.
+ */
+export async function getAllBanners(pageKey: string = 'homepage'): Promise<SiteBannerRecord[]> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return [DEFAULT_HOMEPAGE_BANNER];
+  }
+
+  try {
+    let { data, error } = await supabase
+      .from('site_banners')
+      .select('*')
+      .eq('page_key', pageKey)
+      .order('display_order', { ascending: true });
+
+    // Fallback if display_order column is not yet in the database or schema cache
+    if (error && error.message?.includes('display_order')) {
+      console.warn('[getAllBanners] display_order column missing in schema cache; querying without display_order.');
+      const fallback = await supabase
+        .from('site_banners')
+        .select('*')
+        .eq('page_key', pageKey);
+      data = fallback.data;
+      error = fallback.error;
+    }
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      return [DEFAULT_HOMEPAGE_BANNER];
+    }
+
+    return data.map((b: any, idx: number) => ({
+      ...b,
+      title: b.title || `Homepage Banner ${idx + 1}`,
+      display_order: b.display_order ?? idx,
+    })) as SiteBannerRecord[];
+  } catch (err) {
+    console.error(`[getAllBanners] Failed to fetch banners for ${pageKey}:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Persists updated display_order for a list of banners.
+ */
+export async function updateBannerOrders(
+  orderedItems: { id: string; display_order: number }[]
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const updates = orderedItems.map((item) =>
+      supabase!
+        .from('site_banners')
+        .update({
+          display_order: item.display_order,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', item.id)
+    );
+
+    const results = await Promise.all(updates);
+    const failed = results.find((r) => r.error);
+    if (failed && failed.error) {
+      return { success: false, error: failed.error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update banner display order.' };
   }
 }
 
@@ -166,36 +274,8 @@ export async function verifyStaffAuthorization(
       return { authorized: true, role: idRecord.role };
     }
 
-    // Stage 3: Fallback check by verified email if provided
-    if (userEmail && userEmail.includes('@')) {
-      const sanitizedEmail = userEmail.trim().toLowerCase();
-      console.info(`[SchoolOffice:Auth] Stage 3: Checking registered admin by email: ${sanitizedEmail}...`);
-
-      const { data: emailRecord, error: emailError } = await supabase
-        .from('admin_users')
-        .select('role, is_active, id')
-        .ilike('email', sanitizedEmail)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!emailError && emailRecord) {
-        console.warn('[SchoolOffice:Auth] Stage 3: User authorized by email, but admin_users.id needs synchronization with auth.users.id:', {
-          role: emailRecord.role,
-          registeredIdPrefix: emailRecord.id ? String(emailRecord.id).slice(0, 8) : 'null',
-          authUserIdPrefix: idPrefix,
-        });
-        return { authorized: true, role: emailRecord.role };
-      }
-
-      if (emailError) {
-        console.error('[SchoolOffice:Auth] Stage 3 email lookup returned error:', {
-          code: emailError.code,
-          message: emailError.message,
-        });
-      }
-    }
-
-    console.warn('[SchoolOffice:Auth] All authorization stages completed without finding an active administrator record.');
+    // If both Stage 1 and Stage 2 complete without an authorized record, access is denied
+    console.warn('[SchoolOffice:Auth] Canonical UID check completed without finding an active administrator record.');
     return {
       authorized: false,
       error: 'Unauthorized: Your account is authenticated, but no active administrator record matches your user credentials in public.admin_users.',

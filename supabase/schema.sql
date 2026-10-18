@@ -55,45 +55,17 @@ RETURNS TABLE (
     role TEXT,
     email TEXT
 )
-LANGUAGE plpgsql
+LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
 AS $$
-DECLARE
-    v_uid UUID := auth.uid();
-    v_jwt_email TEXT := LOWER(auth.jwt() ->> 'email');
-BEGIN
-    IF v_uid IS NULL THEN
-        RETURN QUERY SELECT false, NULL::TEXT, NULL::TEXT;
-        RETURN;
-    END IF;
-
-    -- 1. Check direct match on id (standard flow)
-    RETURN QUERY
-    SELECT true, au.role, au.email
-    FROM public.admin_users au
-    WHERE au.id = v_uid
-      AND au.is_active = true
-    LIMIT 1;
-
-    IF FOUND THEN
-        RETURN;
-    END IF;
-
-    -- 2. Fallback check: If admin_users has this verified email but id is mismatched
-    IF v_jwt_email IS NOT NULL THEN
-        RETURN QUERY
-        SELECT true, au.role, au.email
-        FROM public.admin_users au
-        WHERE LOWER(au.email) = v_jwt_email
-          AND au.is_active = true
-        LIMIT 1;
-    END IF;
-END;
+  SELECT true, au.role, au.email
+  FROM public.admin_users au
+  WHERE au.id = auth.uid()
+    AND au.is_active = true
+  LIMIT 1;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.get_staff_authorization_status() TO authenticated;
 
 -- RLS: Authenticated user can check their own active admin authorization
 DROP POLICY IF EXISTS "Users can check their own admin status" ON public.admin_users;
@@ -102,7 +74,7 @@ CREATE POLICY "Users can check their own admin status"
     FOR SELECT
     TO authenticated
     USING (
-      (auth.uid() = id OR LOWER(email) = LOWER(auth.jwt() ->> 'email'))
+      auth.uid() = id
       AND is_active = true
     );
 
@@ -121,14 +93,22 @@ CREATE POLICY "Super admins manage admin_users"
 
 CREATE TABLE IF NOT EXISTS public.site_banners (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    page_key TEXT UNIQUE NOT NULL,
-    page_path TEXT NOT NULL,
+    page_key TEXT NOT NULL DEFAULT 'homepage',
+    page_path TEXT NOT NULL DEFAULT '/',
+    title TEXT NOT NULL DEFAULT 'Homepage Hero Banner',
     desktop_image_path TEXT NOT NULL,
     mobile_image_path TEXT NOT NULL,
     is_published BOOLEAN DEFAULT TRUE NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_by TEXT
 );
+
+ALTER TABLE public.site_banners ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT 'Homepage Hero Banner';
+ALTER TABLE public.site_banners ADD COLUMN IF NOT EXISTS display_order INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.site_banners ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE public.site_banners DROP CONSTRAINT IF EXISTS site_banners_page_key_key;
 
 ALTER TABLE public.site_banners ENABLE ROW LEVEL SECURITY;
 
@@ -174,12 +154,15 @@ CREATE POLICY "Allow authorized staff delete banners"
 
 -- Trigger to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION public.set_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trigger_site_banners_updated_at ON public.site_banners;
 CREATE TRIGGER trigger_site_banners_updated_at
@@ -215,9 +198,12 @@ ON CONFLICT (id) DO UPDATE SET public = true;
 
 -- Policy: Public read access to all objects in site-banners bucket
 DROP POLICY IF EXISTS "Public can view site-banners" ON storage.objects;
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public download of site-banners" ON storage.objects;
 CREATE POLICY "Public can view site-banners"
     ON storage.objects
     FOR SELECT
+    TO anon, authenticated
     USING (bucket_id = 'site-banners');
 
 -- Policy: Only verified active school staff can upload banner assets
@@ -335,12 +321,48 @@ CREATE POLICY "Authorized staff update fee_receipts"
     WITH CHECK (public.is_admin());
 
 -- ==============================================================================
--- 6. Initial Administrator Bootstrap Guide
+-- 6. Explicit Table & Function Grants (Least Privilege alongside RLS)
 -- ==============================================================================
--- Execute the following in Supabase SQL Editor to register the initial administrator:
+
+-- Revoke default public/anon privileges on internal authorization functions
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_super_admin() FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_staff_authorization_status() FROM anon, PUBLIC;
+
+-- Function execution privileges: Authenticated users only
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_staff_authorization_status() TO authenticated;
+
+-- Revoke all table privileges from anon and public by default (Defense-in-depth)
+REVOKE ALL ON TABLE public.admin_users FROM anon, PUBLIC;
+REVOKE ALL ON TABLE public.students FROM anon, PUBLIC;
+REVOKE ALL ON TABLE public.fee_receipts FROM anon, PUBLIC;
+REVOKE ALL ON TABLE public.site_banners FROM anon, PUBLIC;
+
+-- site_banners: anon can ONLY read published banners (filtered by RLS)
+GRANT SELECT ON TABLE public.site_banners TO anon;
+
+-- Authenticated staff privileges (strictly filtered and enforced by RLS)
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.site_banners TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.admin_users TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.students TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.fee_receipts TO authenticated;
+
+-- ==============================================================================
+-- 7. Initial Administrator Bootstrap & Synchronization Guide
+-- ==============================================================================
+-- 1. Ensure existing admin_users row is synchronized with auth.users UUID:
+--    UPDATE public.admin_users au
+--    SET id = u.id
+--    FROM auth.users u
+--    WHERE LOWER(au.email) = LOWER(u.email)
+--      AND au.id != u.id;
 --
--- INSERT INTO public.admin_users (id, email, role, is_active)
--- SELECT id, email, 'super_admin', true
--- FROM auth.users
--- WHERE email = 'your-admin-email@domain.com'
--- ON CONFLICT (id) DO UPDATE SET is_active = true, role = 'super_admin';
+-- 2. To bootstrap a new super_admin account:
+--    INSERT INTO public.admin_users (id, email, role, is_active)
+--    SELECT id, email, 'super_admin', true
+--    FROM auth.users
+--    WHERE email = 'admin@mjschool.in'
+--    ON CONFLICT (id) DO UPDATE SET is_active = true, role = 'super_admin';
+

@@ -3,7 +3,8 @@ import {
   isSupabaseConfigured,
   getSupabaseConfig,
   supabase,
-  getPublishedBanner,
+  getAllBanners,
+  updateBannerOrders,
   DEFAULT_HOMEPAGE_BANNER,
   SiteBannerRecord,
   verifyStaffAuthorization,
@@ -29,6 +30,14 @@ import {
   Layers,
   Search,
   Filter,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+  Trash2,
+  Edit3,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 type AdminTab = 'banners' | 'students' | 'receipts';
@@ -56,10 +65,18 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
-  // Banners data state
-  const [bannerRecord, setBannerRecord] = useState<SiteBannerRecord>(DEFAULT_HOMEPAGE_BANNER);
-  const [isEditingHomepage, setIsEditingHomepage] = useState(false);
-  const [bannersLoading, setBannersLoading] = useState(false);
+  // Banners multi-banner data state
+  const [bannersList, setBannersList] = useState<SiteBannerRecord[]>([DEFAULT_HOMEPAGE_BANNER]);
+  const [isEditingBanner, setIsEditingBanner] = useState<boolean>(false);
+  const [editingBanner, setEditingBanner] = useState<SiteBannerRecord | null>(null);
+  const [bannerTitle, setBannerTitle] = useState<string>('');
+  const [bannerIsPublished, setBannerIsPublished] = useState<boolean>(true);
+  const [bannersLoading, setBannersLoading] = useState<boolean>(false);
+  const [isReordering, setIsReordering] = useState<boolean>(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [deleteConfirmBanner, setDeleteConfirmBanner] = useState<SiteBannerRecord | null>(null);
+  const [isDeletingBanner, setIsDeletingBanner] = useState<boolean>(false);
 
   // Replacement banner upload state
   const [desktopFile, setDesktopFile] = useState<SelectedImageState | null>(null);
@@ -182,14 +199,15 @@ export const SchoolOfficeAdmin: React.FC = () => {
     }
   }, []);
 
-  // Fetch active banner data when authenticated
+  // Fetch all banners (published & drafts) when authenticated
   const loadBanners = async () => {
     setBannersLoading(true);
     try {
-      const data = await getPublishedBanner('homepage');
-      setBannerRecord(data);
+      const data = await getAllBanners('homepage');
+      setBannersList(data);
     } catch (err) {
-      console.error('Failed to load banner data:', err);
+      console.error('Failed to load banner list:', err);
+      setBannersList([DEFAULT_HOMEPAGE_BANNER]);
     } finally {
       setBannersLoading(false);
     }
@@ -332,15 +350,229 @@ export const SchoolOfficeAdmin: React.FC = () => {
     clearDesktopSelection();
     clearMobileSelection();
     setSaveBannerMessage(null);
-    setIsEditingHomepage(false);
+    setIsEditingBanner(false);
+    setEditingBanner(null);
   };
 
-  // Save banner changes (Storage Upload + DB Update)
-  const handleSaveBanner = async () => {
-    if (!desktopFile && !mobileFile) {
-      setSaveBannerMessage({ type: 'error', text: 'No image changes to save.' });
+  const handleOpenAddBanner = () => {
+    setEditingBanner(null);
+    setBannerTitle('Campus Announcement');
+    setBannerIsPublished(true);
+    clearDesktopSelection();
+    clearMobileSelection();
+    setSaveBannerMessage(null);
+    setIsEditingBanner(true);
+  };
+
+  const handleOpenEditBanner = (banner: SiteBannerRecord) => {
+    setEditingBanner(banner);
+    setBannerTitle(banner.title || 'Homepage Hero Banner');
+    setBannerIsPublished(banner.is_published);
+    clearDesktopSelection();
+    clearMobileSelection();
+    setSaveBannerMessage(null);
+    setIsEditingBanner(true);
+  };
+
+  const handleTogglePublish = async (banner: SiteBannerRecord) => {
+    if (!banner.id) return;
+
+    // Safety constraint: Prevent unpublishing the last active published banner
+    if (banner.is_published) {
+      const activeCount = bannersList.filter((b) => b.is_published).length;
+      if (activeCount <= 1) {
+        setSaveBannerMessage({
+          type: 'error',
+          text: 'Cannot unpublish the only active banner. The homepage requires at least one published banner to remain visible.',
+        });
+        return;
+      }
+    }
+
+    if (!supabase || !isSupabaseConfigured()) {
+      setSaveBannerMessage({ type: 'error', text: 'Supabase client is not configured.' });
       return;
     }
+
+    try {
+      const { error } = await supabase
+        .from('site_banners')
+        .update({
+          is_published: !banner.is_published,
+          updated_at: new Date().toISOString(),
+          updated_by: currentUserEmail || 'Staff Admin',
+        })
+        .eq('id', banner.id);
+
+      if (error) throw error;
+
+      setSaveBannerMessage({
+        type: 'success',
+        text: `Banner "${banner.title || 'Untitled'}" is now ${!banner.is_published ? 'Published' : 'saved as Draft'}.`,
+      });
+      await loadBanners();
+    } catch (err: any) {
+      setSaveBannerMessage({
+        type: 'error',
+        text: `Failed to update banner status: ${err.message}`,
+      });
+    }
+  };
+
+  const handleDeleteBanner = async (banner: SiteBannerRecord) => {
+    if (!banner.id) return;
+
+    // Safety constraint: Prevent deletion of the final published banner
+    if (banner.is_published) {
+      const activeCount = bannersList.filter((b) => b.is_published).length;
+      if (activeCount <= 1) {
+        setSaveBannerMessage({
+          type: 'error',
+          text: 'Deletion blocked: You cannot delete the only active published banner. Please publish another banner first to ensure the homepage never becomes blank.',
+        });
+        setDeleteConfirmBanner(null);
+        return;
+      }
+    }
+
+    if (!supabase || !isSupabaseConfigured()) {
+      setSaveBannerMessage({ type: 'error', text: 'Supabase client is not configured.' });
+      return;
+    }
+
+    setIsDeletingBanner(true);
+    try {
+      const { error } = await supabase.from('site_banners').delete().eq('id', banner.id);
+      if (error) throw error;
+
+      setSaveBannerMessage({
+        type: 'success',
+        text: `Banner "${banner.title || 'Untitled'}" was deleted successfully.`,
+      });
+      setDeleteConfirmBanner(null);
+      await loadBanners();
+    } catch (err: any) {
+      setSaveBannerMessage({
+        type: 'error',
+        text: `Failed to delete banner: ${err.message}`,
+      });
+    } finally {
+      setIsDeletingBanner(false);
+    }
+  };
+
+  // Reorder Handlers (HTML5 Drag & Drop + Keyboard accessible Move Up / Move Down)
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      handleDragEnd();
+      return;
+    }
+
+    const prevList = [...bannersList];
+    const updated = [...bannersList];
+    const [draggedItem] = updated.splice(draggedIndex, 1);
+    updated.splice(dropIndex, 0, draggedItem);
+
+    // Compute updated sequence
+    const orderedForDb = updated.map((item, idx) => ({
+      id: item.id!,
+      display_order: idx,
+    }));
+
+    const optimisticList = updated.map((item, idx) => ({ ...item, display_order: idx }));
+    setBannersList(optimisticList);
+    handleDragEnd();
+
+    setIsReordering(true);
+    const result = await updateBannerOrders(orderedForDb);
+    setIsReordering(false);
+
+    if (!result.success) {
+      setBannersList(prevList);
+      setSaveBannerMessage({
+        type: 'error',
+        text: `Failed to save display order: ${result.error}. Previous order restored.`,
+      });
+    } else {
+      setSaveBannerMessage({
+        type: 'success',
+        text: 'Carousel display sequence updated and saved successfully!',
+      });
+    }
+  };
+
+  const handleMoveOrder = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= bannersList.length) return;
+
+    const prevList = [...bannersList];
+    const updated = [...bannersList];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    const orderedForDb = updated.map((item, idx) => ({
+      id: item.id!,
+      display_order: idx,
+    }));
+
+    const optimisticList = updated.map((item, idx) => ({ ...item, display_order: idx }));
+    setBannersList(optimisticList);
+
+    setIsReordering(true);
+    const result = await updateBannerOrders(orderedForDb);
+    setIsReordering(false);
+
+    if (!result.success) {
+      setBannersList(prevList);
+      setSaveBannerMessage({
+        type: 'error',
+        text: `Failed to save display order: ${result.error}. Previous order restored.`,
+      });
+    } else {
+      setSaveBannerMessage({
+        type: 'success',
+        text: 'Carousel display sequence updated successfully.',
+      });
+    }
+  };
+
+  // Save banner changes (Storage Upload + DB Update / Insert)
+  const handleSaveBanner = async () => {
+    const isNew = !editingBanner;
+
+    if (isNew && (!desktopFile || !mobileFile)) {
+      setSaveBannerMessage({
+        type: 'error',
+        text: 'Both desktop (1920 × 640) and mobile (535 × 378) images are required when creating a new banner.',
+      });
+      return;
+    }
+
+    if (!isNew && !desktopFile && !mobileFile && bannerTitle === editingBanner.title && bannerIsPublished === editingBanner.is_published) {
+      setSaveBannerMessage({ type: 'error', text: 'No changes detected to save.' });
+      return;
+    }
+
+    const titleToSave = bannerTitle.trim() || (isNew ? 'Homepage Announcement' : editingBanner?.title || 'Homepage Banner');
 
     setIsSavingBanner(true);
     setSaveBannerMessage(null);
@@ -348,15 +580,15 @@ export const SchoolOfficeAdmin: React.FC = () => {
     if (!isSupabaseConfigured() || !supabase) {
       setSaveBannerMessage({
         type: 'error',
-        text: 'Supabase connection is required to upload assets and update published banner records.',
+        text: 'Supabase connection is required to upload assets and update banner records.',
       });
       setIsSavingBanner(false);
       return;
     }
 
     try {
-      let newDesktopUrl = bannerRecord.desktop_image_path;
-      let newMobileUrl = bannerRecord.mobile_image_path;
+      let newDesktopUrl = editingBanner?.desktop_image_path || DEFAULT_HOMEPAGE_BANNER.desktop_image_path;
+      let newMobileUrl = editingBanner?.mobile_image_path || DEFAULT_HOMEPAGE_BANNER.mobile_image_path;
       const timestamp = Date.now();
 
       // 1. Upload Desktop Banner if selected
@@ -403,39 +635,64 @@ export const SchoolOfficeAdmin: React.FC = () => {
         newMobileUrl = publicUrlData.publicUrl;
       }
 
-      // 3. Upsert into database
-      const { data: updatedRecord, error: dbError } = await supabase
-        .from('site_banners')
-        .upsert(
-          {
+      // 3. Insert new banner or update existing record
+      if (isNew) {
+        const newDisplayOrder = bannersList.length;
+        const { error: insertError } = await supabase
+          .from('site_banners')
+          .insert({
             page_key: 'homepage',
             page_path: '/',
+            title: titleToSave,
             desktop_image_path: newDesktopUrl,
             mobile_image_path: newMobileUrl,
-            is_published: true,
+            is_published: bannerIsPublished,
+            display_order: newDisplayOrder,
             updated_at: new Date().toISOString(),
             updated_by: currentUserEmail || 'Staff Admin',
-          },
-          { onConflict: 'page_key' }
-        )
-        .select()
-        .single();
+          });
 
-      if (dbError) {
-        throw new Error(`Database record update failed: ${dbError.message}`);
+        if (insertError) throw insertError;
+
+        setSaveBannerMessage({
+          type: 'success',
+          text: `Banner "${titleToSave}" created and saved successfully!`,
+        });
+      } else {
+        const hasValidUuid = Boolean(editingBanner?.id && editingBanner.id !== 'default-homepage-banner' && editingBanner.id.length > 20);
+        const query = supabase
+          .from('site_banners')
+          .update({
+            title: titleToSave,
+            desktop_image_path: newDesktopUrl,
+            mobile_image_path: newMobileUrl,
+            is_published: bannerIsPublished,
+            updated_at: new Date().toISOString(),
+            updated_by: currentUserEmail || 'Staff Admin',
+          });
+
+        const { error: updateError } = hasValidUuid
+          ? await query.eq('id', editingBanner.id)
+          : await query.eq('page_key', 'homepage');
+
+        if (updateError) throw updateError;
+
+        setSaveBannerMessage({
+          type: 'success',
+          text: `Banner "${titleToSave}" updated successfully!`,
+        });
       }
 
-      setBannerRecord(updatedRecord as SiteBannerRecord);
-      setSaveBannerMessage({
-        type: 'success',
-        text: 'Homepage banner successfully updated and published to the live website!',
-      });
       clearDesktopSelection();
       clearMobileSelection();
+      setIsEditingBanner(false);
+      setEditingBanner(null);
+      await loadBanners();
     } catch (err: any) {
+      console.error('[SchoolOfficeAdmin] Banner save failed:', err);
       setSaveBannerMessage({
         type: 'error',
-        text: err?.message || 'Failed to save banner changes. Please check permissions.',
+        text: err?.message || 'Failed to save banner changes. Please check database permissions.',
       });
     } finally {
       setIsSavingBanner(false);
@@ -650,7 +907,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
               type="button"
               onClick={() => {
                 setActiveTab('banners');
-                setIsEditingHomepage(false);
+                setIsEditingBanner(false);
                 setMobileMenuOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors text-left cursor-pointer ${
@@ -738,7 +995,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
       <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         
         {/* ==================================================================== */}
-        {/* 1. BANNERS SECTION                                                   */}
+        {/* 1. BANNERS SECTION (Multi-Banner Carousel Management)                */}
         {/* ==================================================================== */}
         {activeTab === 'banners' && (
           <div className="space-y-6">
@@ -750,20 +1007,32 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   Website Banners Management
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                  Manage desktop and mobile hero banners across the MJ School website.
+                  Manage desktop and mobile hero banners, ordering, and publication for the MJ School homepage carousel.
                 </p>
               </div>
 
-              {!isEditingHomepage && (
-                <button
-                  type="button"
-                  onClick={loadBanners}
-                  disabled={bannersLoading}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors self-start sm:self-auto cursor-pointer"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${bannersLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh Data</span>
-                </button>
+              {!isEditingBanner && (
+                <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={loadBanners}
+                    disabled={bannersLoading}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                    title="Refresh banners from Supabase"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${bannersLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh Data</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenAddBanner}
+                    className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider px-4 py-2 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] transition-colors shadow-sm cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Banner</span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -785,108 +1054,214 @@ export const SchoolOfficeAdmin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSaveBannerMessage(null)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             )}
 
-            {/* VIEW A: Banner Listing */}
-            {!isEditingHomepage && (
-              <div className="bg-white border border-slate-200 overflow-hidden">
-                <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#0B2545] uppercase tracking-wider">
-                    Configured Page Banners (1)
-                  </span>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Additional page banners can be registered dynamically
-                  </span>
+            {/* VIEW A: Multi-Banner Listing & Reordering */}
+            {!isEditingBanner && (
+              <div className="space-y-4">
+                {/* Stats & Drag Instruction Bar */}
+                <div className="p-4 bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-[#0B2545] uppercase tracking-wider">
+                      Configured Banners ({bannersList.length})
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-emerald-700 font-semibold">
+                      {bannersList.filter((b) => b.is_published).length} Published
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-amber-700 font-semibold">
+                      {bannersList.filter((b) => !b.is_published).length} Draft
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-500 text-[11.5px]">
+                    <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Drag handle (:::) to reorder, or use Move Up / Down buttons. Homepage updates automatically.</span>
+                  </div>
                 </div>
 
-                <div className="p-6">
-                  {/* Homepage Banner Card Entry */}
-                  <div className="border border-slate-200 p-5 sm:p-6 hover:border-slate-300 transition-colors space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base sm:text-lg font-bold font-serif text-[#0B2545]">
-                            Homepage Hero Banner
-                          </h3>
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
-                            {bannerRecord.is_published ? 'Published' : 'Draft'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-slate-500 font-mono">Route: /</span>
-                      </div>
+                {/* Banner Cards List */}
+                <div className="space-y-3">
+                  {bannersList.map((banner, index) => {
+                    const isDragged = draggedIndex === index;
+                    const isDragOver = dragOverIndex === index;
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSaveBannerMessage(null);
-                          setIsEditingHomepage(true);
-                        }}
-                        className="bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase tracking-wider px-5 py-2.5 transition-colors self-start sm:self-auto cursor-pointer"
+                    return (
+                      <div
+                        key={banner.id || `banner-${index}`}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={(e) => handleDrop(e, index)}
+                        className={`bg-white border p-4 sm:p-5 transition-all duration-150 ${
+                          isDragOver
+                            ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
+                            : isDragged
+                            ? 'opacity-40 border-dashed border-[#0B2545]'
+                            : 'border-slate-200 hover:border-slate-300 shadow-xs'
+                        }`}
                       >
-                        Edit / Manage Banners
-                      </button>
-                    </div>
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          {/* Left: Reorder 2x3 Handle + Position + Title Info */}
+                          <div className="flex items-start sm:items-center gap-3 min-w-[280px]">
+                            {/* 2x3 Drag Handle (6 dots) */}
+                            <div
+                              className="cursor-grab active:cursor-grabbing p-1.5 text-slate-400 hover:text-[#0B2545] hover:bg-slate-100 rounded transition-colors touch-none select-none"
+                              title="Drag 6-dot handle to reorder carousel sequence"
+                              aria-label="Drag handle to reorder"
+                            >
+                              <GripVertical className="w-5 h-5 text-slate-500" />
+                            </div>
 
-                    {/* Previews Grid in Card */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 pt-2">
-                      {/* Desktop Preview */}
-                      <div className="md:col-span-8 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                          <span>Desktop Banner (1920 × 640)</span>
-                          <span className="text-[11px] text-slate-400 font-mono truncate max-w-xs">
-                            {bannerRecord.desktop_image_path}
-                          </span>
-                        </div>
-                        <div className="w-full aspect-[1920/640] bg-slate-900 border border-slate-200 overflow-hidden">
-                          <img
-                            src={bannerRecord.desktop_image_path}
-                            alt="Desktop Banner Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
+                            {/* Position Badge */}
+                            <span className="px-2 py-0.5 bg-slate-100 text-[#0B2545] font-black text-xs border border-slate-200 rounded shrink-0">
+                              #{index + 1}
+                            </span>
 
-                      {/* Mobile Preview */}
-                      <div className="md:col-span-4 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                          <span>Mobile Banner (535 × 378)</span>
-                          <span className="text-[11px] text-slate-400 font-mono truncate max-w-[120px]">
-                            {bannerRecord.mobile_image_path}
-                          </span>
-                        </div>
-                        <div className="w-full aspect-[535/378] bg-slate-900 border border-slate-200 overflow-hidden">
-                          <img
-                            src={bannerRecord.mobile_image_path}
-                            alt="Mobile Banner Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                            {/* Title & Route & Status */}
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base font-bold font-serif text-[#0B2545]">
+                                  {banner.title || 'Homepage Hero Banner'}
+                                </h3>
+                                {banner.is_published ? (
+                                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
+                                    <Eye className="w-3 h-3" /> Published
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
+                                    <EyeOff className="w-3 h-3" /> Draft
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                                <span className="font-mono">Route: /</span>
+                                <span>•</span>
+                                <span>Updated: {formatDate(banner.updated_at)}</span>
+                              </div>
+                            </div>
+                          </div>
 
-                    <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-[#C59B27]" />
-                        <span>Last Updated: {formatDate(bannerRecord.updated_at)}</span>
+                          {/* Middle: Desktop and Mobile Previews */}
+                          <div className="flex items-center gap-3 shrink-0">
+                            {/* Desktop preview thumbnail */}
+                            <div className="space-y-1">
+                              <span className="block text-[10px] font-semibold text-slate-500 uppercase">
+                                Desktop (1920×640)
+                              </span>
+                              <div className="w-36 sm:w-44 aspect-[1920/640] bg-slate-900 border border-slate-200 overflow-hidden">
+                                <img
+                                  src={banner.desktop_image_path}
+                                  alt="Desktop preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Mobile preview thumbnail */}
+                            <div className="space-y-1">
+                              <span className="block text-[10px] font-semibold text-slate-500 uppercase">
+                                Mobile (535×378)
+                              </span>
+                              <div className="w-14 sm:w-16 aspect-[535/378] bg-slate-900 border border-slate-200 overflow-hidden">
+                                <img
+                                  src={banner.mobile_image_path}
+                                  alt="Mobile preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Actions (Move, Toggle, Edit, Delete) */}
+                          <div className="flex items-center gap-1.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 flex-wrap">
+                            {/* Move Up */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveOrder(index, 'up')}
+                              disabled={index === 0 || isReordering}
+                              className="p-1.5 border border-slate-200 hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer"
+                              title="Move banner earlier in carousel sequence"
+                              aria-label="Move Up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Move Down */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveOrder(index, 'down')}
+                              disabled={index === bannersList.length - 1 || isReordering}
+                              className="p-1.5 border border-slate-200 hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer"
+                              title="Move banner later in carousel sequence"
+                              aria-label="Move Down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Toggle Publish / Draft */}
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePublish(banner)}
+                              className={`px-2.5 py-1.5 text-xs font-semibold border transition-colors cursor-pointer inline-flex items-center gap-1 ${
+                                banner.is_published
+                                  ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800'
+                                  : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                              }`}
+                              title={banner.is_published ? 'Unpublish to Draft' : 'Publish to Live Carousel'}
+                            >
+                              {banner.is_published ? (
+                                <>
+                                  <EyeOff className="w-3 h-3" />
+                                  <span>Unpublish</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-3 h-3" />
+                                  <span>Publish</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Edit Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditBanner(banner)}
+                              className="px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase tracking-wider transition-colors inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmBanner(banner)}
+                              className="p-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                              title="Delete banner"
+                              aria-label="Delete banner"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <span>Updated By: <strong>{bannerRecord.updated_by || 'Administration'}</strong></span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* VIEW B: Homepage Edit / Upload Management */}
-            {isEditingHomepage && (
-              <div className="bg-white border border-slate-200 p-6 sm:p-8 space-y-8">
-                {/* Back & Title */}
+            {/* VIEW B: Add / Edit Banner Form */}
+            {isEditingBanner && (
+              <div className="bg-white border border-slate-200 p-6 sm:p-8 space-y-6">
+                {/* Header with Back button and Status */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                   <button
                     type="button"
@@ -900,8 +1275,64 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <span className="text-xs font-bold text-[#0B2545] uppercase tracking-wider">
-                      Editing Homepage Banner
+                      {editingBanner ? `Editing: ${editingBanner.title || 'Banner'}` : 'Adding New Homepage Banner'}
                     </span>
+                  </div>
+                </div>
+
+                {/* Banner Details: Title and Publication status */}
+                <div className="p-6 border border-slate-200 bg-slate-50 space-y-4">
+                  <h3 className="font-serif font-bold text-base text-[#0B2545]">
+                    Banner Configuration &amp; Metadata
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Title Input */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Banner Title / Internal Label *
+                      </label>
+                      <input
+                        type="text"
+                        value={bannerTitle}
+                        onChange={(e) => setBannerTitle(e.target.value)}
+                        placeholder="e.g., Admissions Open 2026-27 / Annual Day Celebration"
+                        className="w-full px-3 py-2 text-sm bg-white border border-slate-300 focus:outline-none focus:border-[#C59B27] focus:ring-1 focus:ring-[#C59B27]"
+                      />
+                      <span className="text-[11px] text-slate-500 mt-1 block">
+                        Displayed in the carousel slide accessibility tags and admin portal.
+                      </span>
+                    </div>
+
+                    {/* Publication Status Selector */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Publication State
+                      </label>
+                      <div className="flex items-center gap-4 mt-2">
+                        <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="publication-state"
+                            checked={bannerIsPublished}
+                            onChange={() => setBannerIsPublished(true)}
+                            className="text-[#C59B27] focus:ring-[#C59B27]"
+                          />
+                          <span>Publish Immediately (Visible in carousel)</span>
+                        </label>
+
+                        <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="publication-state"
+                            checked={!bannerIsPublished}
+                            onChange={() => setBannerIsPublished(false)}
+                            className="text-[#C59B27] focus:ring-[#C59B27]"
+                          />
+                          <span>Save as Draft (Private)</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -913,7 +1344,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                         Desktop Banner Asset
                       </h3>
                       <p className="text-xs text-slate-600">
-                        Recommended dimensions: <strong>1920 × 640 px</strong>. Formats supported: WebP, JPEG, PNG.
+                        Recommended dimensions: <strong>1920 × 640 px</strong> (3.0:1 aspect ratio). Supported: WebP, JPEG, PNG.
                       </p>
                     </div>
 
@@ -937,7 +1368,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                         <button
                           type="button"
                           onClick={clearDesktopSelection}
-                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
+                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -949,7 +1380,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs text-slate-600">
                       <span className="font-semibold">
-                        {desktopFile ? 'Pending Replacement Preview:' : 'Current Live Desktop Banner:'}
+                        {desktopFile ? 'Selected Desktop Image Preview:' : 'Current Desktop Image:'}
                       </span>
                       {desktopFile && (
                         <span className="text-[11px] font-mono text-slate-500">
@@ -960,7 +1391,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
                     <div className="w-full aspect-[1920/640] bg-slate-900 border-2 border-slate-300 overflow-hidden relative">
                       <img
-                        src={desktopFile ? desktopFile.previewUrl : bannerRecord.desktop_image_path}
+                        src={desktopFile ? desktopFile.previewUrl : editingBanner ? editingBanner.desktop_image_path : DEFAULT_HOMEPAGE_BANNER.desktop_image_path}
                         alt="Desktop Banner Preview"
                         className="w-full h-full object-cover"
                       />
@@ -981,7 +1412,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                               <strong className="block">Dimension Advisory:</strong>
                               <span>
                                 Uploaded image is {desktopFile.width} × {desktopFile.height} px (aspect ratio {(desktopFile.width / desktopFile.height).toFixed(2)}:1).
-                                Recommended is 1920 × 640 px (3.0:1). The image will be displayed using <code>object-cover</code> to prevent distortion.
+                                Recommended is 1920 × 640 px. The image will be rendered using <code>object-cover</code> to prevent distortion.
                               </span>
                             </div>
                           </div>
@@ -999,7 +1430,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                         Mobile Banner Asset
                       </h3>
                       <p className="text-xs text-slate-600">
-                        Recommended dimensions: <strong>535 × 378 px</strong>. Formats supported: WebP, JPEG, PNG.
+                        Recommended dimensions: <strong>535 × 378 px</strong> (1.42:1 aspect ratio). Supported: WebP, JPEG, PNG.
                       </p>
                     </div>
 
@@ -1023,7 +1454,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                         <button
                           type="button"
                           onClick={clearMobileSelection}
-                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1"
+                          className="text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -1035,7 +1466,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs text-slate-600">
                       <span className="font-semibold">
-                        {mobileFile ? 'Pending Replacement Preview:' : 'Current Live Mobile Banner:'}
+                        {mobileFile ? 'Selected Mobile Image Preview:' : 'Current Mobile Image:'}
                       </span>
                       {mobileFile && (
                         <span className="text-[11px] font-mono text-slate-500">
@@ -1046,7 +1477,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
                     <div className="max-w-md w-full aspect-[535/378] bg-slate-900 border-2 border-slate-300 overflow-hidden relative">
                       <img
-                        src={mobileFile ? mobileFile.previewUrl : bannerRecord.mobile_image_path}
+                        src={mobileFile ? mobileFile.previewUrl : editingBanner ? editingBanner.mobile_image_path : DEFAULT_HOMEPAGE_BANNER.mobile_image_path}
                         alt="Mobile Banner Preview"
                         className="w-full h-full object-cover"
                       />
@@ -1067,7 +1498,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                               <strong className="block">Dimension Advisory:</strong>
                               <span>
                                 Uploaded image is {mobileFile.width} × {mobileFile.height} px (aspect ratio {(mobileFile.width / mobileFile.height).toFixed(2)}:1).
-                                Recommended is 535 × 378 px (1.42:1).
+                                Recommended is 535 × 378 px.
                               </span>
                             </div>
                           </div>
@@ -1082,11 +1513,11 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   <div className="text-xs text-slate-600">
                     {desktopFile || mobileFile ? (
                       <span className="text-amber-800 font-bold">
-                        Unsaved Changes: {desktopFile ? 'Desktop banner replacement selected. ' : ''}
-                        {mobileFile ? 'Mobile banner replacement selected.' : ''}
+                        Pending uploads ready: {desktopFile ? 'Desktop image selected. ' : ''}
+                        {mobileFile ? 'Mobile image selected.' : ''}
                       </span>
                     ) : (
-                      <span>No pending replacement images selected.</span>
+                      <span>No new replacement image files selected.</span>
                     )}
                   </div>
 
@@ -1103,7 +1534,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleSaveBanner}
-                      disabled={(!desktopFile && !mobileFile) || isSavingBanner}
+                      disabled={isSavingBanner}
                       className="px-6 py-2.5 bg-[#C59B27] hover:bg-[#b58b19] disabled:opacity-40 text-[#0B2545] text-xs font-black uppercase tracking-wider transition-colors inline-flex items-center gap-2 shadow-sm cursor-pointer"
                     >
                       {isSavingBanner ? (
@@ -1114,7 +1545,57 @@ export const SchoolOfficeAdmin: React.FC = () => {
                       ) : (
                         <>
                           <Save className="w-4 h-4 text-[#0B2545]" />
-                          <span>Save Changes</span>
+                          <span>Save Banner</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmBanner && (
+              <div className="fixed inset-0 z-50 bg-[#0B2545]/70 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="bg-white border border-slate-300 max-w-md w-full p-6 shadow-xl space-y-4">
+                  <div className="flex items-center gap-2 text-rose-700">
+                    <AlertTriangle className="w-5 h-5 shrink-0" />
+                    <h3 className="font-serif font-bold text-lg text-[#0B2545]">
+                      Confirm Banner Deletion
+                    </h3>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Are you sure you want to permanently delete the banner{' '}
+                    <strong>"{deleteConfirmBanner.title || 'Untitled Banner'}"</strong>?
+                    This will remove it from the homepage carousel and cannot be undone.
+                  </p>
+
+                  <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmBanner(null)}
+                      disabled={isDeletingBanner}
+                      className="px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 border border-slate-300 uppercase tracking-wider cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBanner(deleteConfirmBanner)}
+                      disabled={isDeletingBanner}
+                      className="px-5 py-2 text-xs font-black text-white bg-rose-700 hover:bg-rose-800 uppercase tracking-wider inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      {isDeletingBanner ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Deleting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Confirm Delete</span>
                         </>
                       )}
                     </button>
