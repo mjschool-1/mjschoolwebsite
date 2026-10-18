@@ -1,9 +1,13 @@
 -- ==============================================================================
 -- MJ School, Shahapur — Security Hardening Migration
 -- Run this in Supabase SQL Editor (Dashboard -> SQL Editor)
+-- Safe for brand-new or existing Supabase projects.
 -- ==============================================================================
 
--- 1. Create Staff / Administrator Directory Table
+-- ==============================================================================
+-- 1. Administrative Users & Staff Authorization Table
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.admin_users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
@@ -12,10 +16,9 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Enable Row Level Security on admin_users
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
 
--- Security Definer helper to check if the executing user is an active administrator
+-- Helper function to check admin status with SECURITY DEFINER
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -62,12 +65,23 @@ CREATE POLICY "Super admins manage admin_users"
     );
 
 -- ==============================================================================
--- 2. Harden site_banners Policies
+-- 2. site_banners Table & Hardened Policies
 -- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.site_banners (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    page_key TEXT UNIQUE NOT NULL,
+    page_path TEXT NOT NULL,
+    desktop_image_path TEXT NOT NULL,
+    mobile_image_path TEXT NOT NULL,
+    is_published BOOLEAN DEFAULT TRUE NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_by TEXT
+);
 
 ALTER TABLE public.site_banners ENABLE ROW LEVEL SECURITY;
 
--- Remove old open authenticated policy
+-- Remove old open authenticated policy if present from previous iterations
 DROP POLICY IF EXISTS "Allow staff full access to site_banners" ON public.site_banners;
 
 -- Public can read ONLY published banners
@@ -110,13 +124,102 @@ CREATE POLICY "Allow authorized staff delete banners"
     TO authenticated
     USING (public.is_admin());
 
+-- Trigger to automatically update updated_at timestamp
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_site_banners_updated_at ON public.site_banners;
+CREATE TRIGGER trigger_site_banners_updated_at
+    BEFORE UPDATE ON public.site_banners
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
+
+-- Seed initial record for Homepage banner (uses verified default assets)
+INSERT INTO public.site_banners (
+    page_key,
+    page_path,
+    desktop_image_path,
+    mobile_image_path,
+    is_published,
+    updated_by
+) VALUES (
+    'homepage',
+    '/',
+    '/hero-desktop.png',
+    '/hero-mobile.png',
+    true,
+    'MJ School Setup'
+) ON CONFLICT (page_key) DO NOTHING;
+
 -- ==============================================================================
--- 3. Harden students Table Policies (Strictly Confidential)
+-- 3. Storage Bucket Configuration: site-banners
 -- ==============================================================================
+
+-- Create public storage bucket if not already present
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('site-banners', 'site-banners', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Remove old open authenticated storage policies if present
+DROP POLICY IF EXISTS "Staff can upload site-banners" ON storage.objects;
+DROP POLICY IF EXISTS "Staff can update site-banners" ON storage.objects;
+DROP POLICY IF EXISTS "Staff can delete site-banners" ON storage.objects;
+
+-- Ensure public view is maintained for website display
+DROP POLICY IF EXISTS "Public can view site-banners" ON storage.objects;
+CREATE POLICY "Public can view site-banners"
+    ON storage.objects
+    FOR SELECT
+    USING (bucket_id = 'site-banners');
+
+-- Only verified active school staff can upload banner assets
+DROP POLICY IF EXISTS "Authorized staff upload site-banners" ON storage.objects;
+CREATE POLICY "Authorized staff upload site-banners"
+    ON storage.objects
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (bucket_id = 'site-banners' AND public.is_admin());
+
+-- Only verified active school staff can update banner assets
+DROP POLICY IF EXISTS "Authorized staff update site-banners" ON storage.objects;
+CREATE POLICY "Authorized staff update site-banners"
+    ON storage.objects
+    FOR UPDATE
+    TO authenticated
+    USING (bucket_id = 'site-banners' AND public.is_admin())
+    WITH CHECK (bucket_id = 'site-banners' AND public.is_admin());
+
+-- Only verified active school staff can delete banner assets
+DROP POLICY IF EXISTS "Authorized staff delete site-banners" ON storage.objects;
+CREATE POLICY "Authorized staff delete site-banners"
+    ON storage.objects
+    FOR DELETE
+    TO authenticated
+    USING (bucket_id = 'site-banners' AND public.is_admin());
+
+-- ==============================================================================
+-- 4. Harden students Table Policies (Strictly Confidential)
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.students (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    gr_number TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL,
+    grade_class TEXT NOT NULL,
+    academic_year TEXT NOT NULL,
+    status TEXT DEFAULT 'Active' CHECK (status IN ('Active', 'Alumni', 'Pending Verification')),
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
 
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 
--- Remove old open policy
+-- Remove old open policy if present
 DROP POLICY IF EXISTS "Staff only access to students" ON public.students;
 
 -- Authorized staff only: SELECT
@@ -153,12 +256,25 @@ CREATE POLICY "Authorized staff delete students"
     USING (public.is_admin());
 
 -- ==============================================================================
--- 4. Harden fee_receipts Table Policies (Strictly Confidential)
+-- 5. Harden fee_receipts Table Policies (Strictly Confidential)
 -- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.fee_receipts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    receipt_number TEXT UNIQUE NOT NULL,
+    student_id UUID REFERENCES public.students(id) ON DELETE SET NULL,
+    gr_number TEXT NOT NULL,
+    student_name TEXT NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    payment_date TIMESTAMPTZ NOT NULL,
+    payment_mode TEXT NOT NULL,
+    status TEXT DEFAULT 'Confirmed' CHECK (status IN ('Confirmed', 'Pending Clearance', 'Failed')),
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
 
 ALTER TABLE public.fee_receipts ENABLE ROW LEVEL SECURITY;
 
--- Remove old open policy
+-- Remove old open policy if present
 DROP POLICY IF EXISTS "Staff only access to fee receipts" ON public.fee_receipts;
 
 -- Authorized staff only: SELECT
@@ -185,47 +301,6 @@ CREATE POLICY "Authorized staff update fee_receipts"
     TO authenticated
     USING (public.is_admin())
     WITH CHECK (public.is_admin());
-
--- ==============================================================================
--- 5. Harden Storage Policies (site-banners Bucket)
--- ==============================================================================
-
--- Remove old open authenticated storage policies
-DROP POLICY IF EXISTS "Staff can upload site-banners" ON storage.objects;
-DROP POLICY IF EXISTS "Staff can update site-banners" ON storage.objects;
-DROP POLICY IF EXISTS "Staff can delete site-banners" ON storage.objects;
-
--- Ensure public view is maintained for website display
-DROP POLICY IF EXISTS "Public can view site-banners" ON storage.objects;
-CREATE POLICY "Public can view site-banners"
-    ON storage.objects
-    FOR SELECT
-    USING (bucket_id = 'site-banners');
-
--- Only verified active school staff can upload banner assets
-DROP POLICY IF EXISTS "Authorized staff upload site-banners" ON storage.objects;
-CREATE POLICY "Authorized staff upload site-banners"
-    ON storage.objects
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (bucket_id = 'site-banners' AND public.is_admin());
-
--- Only verified active school staff can update banner assets
-DROP POLICY IF EXISTS "Authorized staff update site-banners" ON storage.objects;
-CREATE POLICY "Authorized staff update site-banners"
-    ON storage.objects
-    FOR UPDATE
-    TO authenticated
-    USING (bucket_id = 'site-banners' AND public.is_admin())
-    WITH CHECK (bucket_id = 'site-banners' AND public.is_admin());
-
--- Only verified active school staff can delete banner assets
-DROP POLICY IF EXISTS "Authorized staff delete site-banners" ON storage.objects;
-CREATE POLICY "Authorized staff delete site-banners"
-    ON storage.objects
-    FOR DELETE
-    TO authenticated
-    USING (bucket_id = 'site-banners' AND public.is_admin());
 
 -- ==============================================================================
 -- 6. Initial Administrator Bootstrap Guide
