@@ -4,7 +4,6 @@
  */
 
 import React from 'react';
-import { TopBar } from './components/TopBar';
 import { Header } from './components/Header';
 import { Navbar } from './components/Navbar';
 import { HeroSlider, FlashNews } from './components/HeroSlider';
@@ -27,24 +26,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col selection:bg-[#C59B27] selection:text-white">
-      {/* 1. Top Utility Info Bar (Only Mobile & Email, Pay Fees Online) */}
-      <TopBar onOpenFee={() => handleNavSelect('fee-structure')} />
-
-      {/* 2. Main Header with School Crest and Search Bar */}
+      {/* 1. Main Header with School Crest and Search Bar */}
       <Header onSelectNav={handleNavSelect} />
 
-      {/* 3. Primary Sticky Navigation Bar with Dropdown Menus */}
+      {/* 2. Primary Sticky Navigation Bar with Dropdown Menus */}
       <Navbar onSelectNav={handleNavSelect} />
-
-      {/* 4. Live Circulars Marquee / Flash News */}
-      <FlashNews />
 
       {/* Main Content Area */}
       <main className="flex-1">
-        {/* 5. Hero Carousel Slider */}
+        {/* 3. Hero Carousel Slider */}
         <section id="home">
           <HeroSlider onSelectNav={handleNavSelect} />
         </section>
+
+        {/* 4. Live Circulars Marquee / Flash News */}
+        <FlashNews />
 
         {/* 6. About School Section (Under About Us) */}
         <AboutSchoolSection />

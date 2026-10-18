@@ -375,9 +375,9 @@ export const DEFAULT_NOTICES: NoticeRecord[] = [
     grades: ['All Grades'],
     description:
       'Detailed instructions regarding document submission, verification timeline, and registration confirmation for all prospective students for the upcoming academic session 2025-26.',
-    has_attachment: true,
+    has_attachment: false,
     attachment_url: null,
-    file_size: '340 KB',
+    file_size: null,
     is_published: true,
     display_order: 1,
     created_at: '2025-10-04T00:00:00Z',
@@ -393,9 +393,9 @@ export const DEFAULT_NOTICES: NoticeRecord[] = [
     grades: ['Jr. KG', 'Sr. KG'],
     description:
       'An interactive stage event celebrating early speech, recitation, and dramatic storytelling for pre-primary scholars. Parents are cordially invited to attend the morning assembly.',
-    has_attachment: true,
+    has_attachment: false,
     attachment_url: null,
-    file_size: '180 KB',
+    file_size: null,
     is_published: true,
     display_order: 2,
     created_at: '2025-10-01T00:00:00Z',
@@ -411,9 +411,9 @@ export const DEFAULT_NOTICES: NoticeRecord[] = [
     grades: ['Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
     description:
       'Official schedule for the Term-I / Half-Yearly theoretical and practical examinations. Students are advised to review reporting times and syllabus portions with respective subject teachers.',
-    has_attachment: true,
+    has_attachment: false,
     attachment_url: null,
-    file_size: '512 KB',
+    file_size: null,
     is_published: true,
     display_order: 3,
     created_at: '2025-09-28T00:00:00Z',
@@ -448,14 +448,18 @@ export async function getPublishedNotices(): Promise<NoticeRecord[]> {
       return DEFAULT_NOTICES;
     }
 
-    return data.map((n: any, idx: number) => ({
-      ...n,
-      grades: Array.isArray(n.grades) ? n.grades : ['All Grades'],
-      is_new: Boolean(n.is_new),
-      has_attachment: Boolean(n.has_attachment),
-      is_published: Boolean(n.is_published),
-      display_order: typeof n.display_order === 'number' ? n.display_order : idx + 1,
-    })) as NoticeRecord[];
+    return data.map((n: any, idx: number) => {
+      const validUrl = typeof n.attachment_url === 'string' && n.attachment_url.trim() ? n.attachment_url.trim() : null;
+      return {
+        ...n,
+        grades: Array.isArray(n.grades) ? n.grades : ['All Grades'],
+        is_new: Boolean(n.is_new),
+        has_attachment: Boolean(n.has_attachment && validUrl),
+        attachment_url: validUrl,
+        is_published: Boolean(n.is_published),
+        display_order: typeof n.display_order === 'number' ? n.display_order : idx + 1,
+      };
+    }) as NoticeRecord[];
   } catch (err) {
     console.warn('[getPublishedNotices] Failover to default notices due to exception:', err);
     return DEFAULT_NOTICES;
@@ -486,14 +490,19 @@ export async function getAllNotices(): Promise<NoticeRecord[]> {
       return DEFAULT_NOTICES;
     }
 
-    return data.map((n: any, idx: number) => ({
-      ...n,
-      grades: Array.isArray(n.grades) ? n.grades : ['All Grades'],
-      is_new: Boolean(n.is_new),
-      has_attachment: Boolean(n.has_attachment),
-      is_published: Boolean(n.is_published),
-      display_order: typeof n.display_order === 'number' ? n.display_order : idx + 1,
-    })) as NoticeRecord[];
+    return data.map((n: any, idx: number) => {
+      const validUrl = typeof n.attachment_url === 'string' && n.attachment_url.trim() ? n.attachment_url.trim() : null;
+      return {
+        ...n,
+        grades: Array.isArray(n.grades) ? n.grades : ['All Grades'],
+        is_new: Boolean(n.is_new),
+        has_attachment: Boolean(n.has_attachment && validUrl),
+        attachment_url: validUrl,
+        file_size: validUrl ? (n.file_size || 'PDF') : null,
+        is_published: Boolean(n.is_published),
+        display_order: typeof n.display_order === 'number' ? n.display_order : idx + 1,
+      };
+    }) as NoticeRecord[];
   } catch (err) {
     console.warn('[getAllNotices] Exception while fetching notices, using fallback:', err);
     return DEFAULT_NOTICES;
@@ -602,5 +611,282 @@ export async function deleteNotice(
     return { success: false, error: err?.message || 'Failed to delete notice.' };
   }
 }
+
+// ==============================================================================
+// Facilities Gallery Management & Reordering
+// ==============================================================================
+
+export interface FacilityImageRecord {
+  id?: string;
+  facility_key: string;
+  title?: string;
+  image_url: string | null;
+  display_order?: number;
+  updated_at?: string;
+  updated_by?: string | null;
+}
+
+export interface FacilityCardConfig {
+  image_url: string | null;
+  display_order: number;
+}
+
+/**
+ * Fetch all facility card configurations (images & display orders) from Supabase.
+ * Returns a key-value map: { [facility_key]: { image_url, display_order } }
+ */
+export async function getFacilityCardConfigs(): Promise<Record<string, FacilityCardConfig>> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return {};
+  }
+
+  const result: Record<string, FacilityCardConfig> = {};
+
+  try {
+    // 1. Primary check: dedicated facility_images table
+    const { data, error } = await supabase
+      .from('facility_images')
+      .select('facility_key, image_url, display_order')
+      .order('display_order', { ascending: true });
+
+    if (!error && data && Array.isArray(data)) {
+      data.forEach((row: any, idx: number) => {
+        if (row.facility_key) {
+          result[row.facility_key] = {
+            image_url: row.image_url || null,
+            display_order: typeof row.display_order === 'number' ? row.display_order : idx,
+          };
+        }
+      });
+      return result;
+    }
+
+    // 2. Fallback check: site_banners table with 'facility_item_' prefix
+    const { data: bannerData, error: bannerError } = await supabase
+      .from('site_banners')
+      .select('page_key, desktop_image_path, display_order')
+      .like('page_key', 'facility_item_%')
+      .order('display_order', { ascending: true });
+
+    if (!bannerError && bannerData && Array.isArray(bannerData)) {
+      bannerData.forEach((row: any, idx: number) => {
+        const key = row.page_key.replace('facility_item_', '');
+        if (key) {
+          result[key] = {
+            image_url: row.desktop_image_path?.trim() ? row.desktop_image_path.trim() : null,
+            display_order: typeof row.display_order === 'number' ? row.display_order : idx,
+          };
+        }
+      });
+    }
+
+    return result;
+  } catch (err) {
+    console.warn('[getFacilityCardConfigs] Error retrieving facility configs:', err);
+    return result;
+  }
+}
+
+/**
+ * Fetch all facility card image mappings from Supabase.
+ * Returns a key-value map: { [facility_key]: image_url }
+ */
+export async function getFacilityImages(): Promise<Record<string, string>> {
+  const configs = await getFacilityCardConfigs();
+  const result: Record<string, string> = {};
+  for (const [key, val] of Object.entries(configs)) {
+    if (val.image_url) {
+      result[key] = val.image_url;
+    }
+  }
+  return result;
+}
+
+/**
+ * Update the display sequence for all facilities cards in Supabase.
+ * Assigns deterministic 0-indexed display_order to each card key.
+ */
+export async function updateFacilityOrders(
+  orderedKeys: string[],
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  if (!orderedKeys || orderedKeys.length === 0) {
+    return { success: false, error: 'No facility card keys provided to order.' };
+  }
+
+  try {
+    const timestamp = new Date().toISOString();
+    const updater = updatedBy || 'Admin Staff';
+
+    // 1. Try updating facility_images table
+    let primarySuccess = true;
+    for (let idx = 0; idx < orderedKeys.length; idx++) {
+      const key = orderedKeys[idx];
+      const { error } = await supabase
+        .from('facility_images')
+        .upsert(
+          {
+            facility_key: key,
+            display_order: idx,
+            updated_at: timestamp,
+            updated_by: updater,
+          },
+          { onConflict: 'facility_key' }
+        );
+
+      if (error) {
+        primarySuccess = false;
+        break;
+      }
+    }
+
+    if (primarySuccess) {
+      return { success: true };
+    }
+
+    // 2. Fallback to site_banners table
+    for (let idx = 0; idx < orderedKeys.length; idx++) {
+      const key = orderedKeys[idx];
+      const bannerPageKey = `facility_item_${key}`;
+
+      const { data: existing } = await supabase
+        .from('site_banners')
+        .select('id')
+        .eq('page_key', bannerPageKey)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        const { error: updErr } = await supabase
+          .from('site_banners')
+          .update({
+            display_order: idx,
+            updated_at: timestamp,
+            updated_by: updater,
+          })
+          .eq('page_key', bannerPageKey);
+
+        if (updErr) {
+          return { success: false, error: updErr.message };
+        }
+      } else {
+        const { error: insErr } = await supabase
+          .from('site_banners')
+          .insert({
+            page_key: bannerPageKey,
+            page_path: '/facilities',
+            title: key,
+            desktop_image_path: '',
+            mobile_image_path: '',
+            is_published: true,
+            display_order: idx,
+            updated_at: timestamp,
+            updated_by: updater,
+          });
+
+        if (insErr) {
+          return { success: false, error: insErr.message };
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update facility display orders.' };
+  }
+}
+
+/**
+ * Update or save an image for a specific facility card.
+ */
+export async function updateFacilityImage(
+  facilityKey: string,
+  imageUrl: string | null,
+  title?: string,
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    // 1. Attempt upsert into dedicated facility_images table
+    const { error } = await supabase
+      .from('facility_images')
+      .upsert(
+        {
+          facility_key: facilityKey,
+          title: title || facilityKey,
+          image_url: imageUrl,
+          updated_at: new Date().toISOString(),
+          updated_by: updatedBy || 'Admin Staff',
+        },
+        { onConflict: 'facility_key' }
+      );
+
+    if (!error) {
+      return { success: true };
+    }
+
+    // 2. If facility_images table does not exist in schema cache, fallback to site_banners
+    const tableMissing = error.message?.includes('facility_images') || (error as any).code === '42P01';
+    if (tableMissing) {
+      const bannerPageKey = `facility_item_${facilityKey}`;
+
+      const { data: existing } = await supabase
+        .from('site_banners')
+        .select('id')
+        .eq('page_key', bannerPageKey)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        await supabase
+          .from('site_banners')
+          .update({
+            title: title || facilityKey,
+            desktop_image_path: imageUrl || '',
+            mobile_image_path: imageUrl || '',
+            updated_at: new Date().toISOString(),
+            updated_by: updatedBy || 'Admin Staff',
+          })
+          .eq('page_key', bannerPageKey);
+      } else if (imageUrl) {
+        await supabase
+          .from('site_banners')
+          .insert({
+            page_key: bannerPageKey,
+            page_path: '/facilities',
+            title: title || facilityKey,
+            desktop_image_path: imageUrl,
+            mobile_image_path: imageUrl,
+            is_published: true,
+            display_order: 0,
+            updated_at: new Date().toISOString(),
+            updated_by: updatedBy || 'Admin Staff',
+          });
+      }
+      return { success: true };
+    }
+
+    return { success: false, error: error.message };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update facility image.' };
+  }
+}
+
+/**
+ * Remove an image from a facility card (reverts to empty frame placeholder).
+ */
+export async function removeFacilityImage(
+  facilityKey: string,
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  return updateFacilityImage(facilityKey, null, undefined, updatedBy);
+}
+
+
 
 

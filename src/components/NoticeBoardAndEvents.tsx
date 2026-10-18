@@ -327,18 +327,18 @@ export const NoticeBoardAndEvents: React.FC = () => {
                                   </span>
                                 </div>
 
-                                {(notice.has_attachment ?? (notice as any).hasAttachment) && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      alert(`Downloading official circular: "${notice.title}"`);
-                                    }}
+                                {Boolean((notice.has_attachment ?? (notice as any).hasAttachment) && notice.attachment_url?.trim()) && (
+                                  <a
+                                    href={notice.attachment_url!.trim()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#0B2545] hover:text-[#C59B27] py-1 px-2.5 rounded bg-white border border-slate-200 hover:border-[#C59B27] shadow-2xs transition-colors cursor-pointer"
+                                    title="Download Circular PDF"
                                   >
                                     <Download className="w-3.5 h-3.5 text-[#C59B27]" />
                                     <span>Download Circular {(notice.file_size || (notice as any).fileSize) ? `(${notice.file_size || (notice as any).fileSize})` : ''}</span>
-                                  </button>
+                                  </a>
                                 )}
                               </div>
                             </div>

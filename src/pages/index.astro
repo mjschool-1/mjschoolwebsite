@@ -1,17 +1,20 @@
 ---
 import PublicLayout from '../layouts/PublicLayout.astro';
-import { HeroSlider } from '../components/HeroSlider';
+import { HeroSlider, FlashNews } from '../components/HeroSlider';
 import { AboutSchoolSection } from '../components/AboutSchoolSection';
 import { NoticeBoardAndEvents } from '../components/NoticeBoardAndEvents';
 ---
 
-<PublicLayout title="MJ School - Shahpur | Affiliated to CBSE">
-  {/* Hero Banner */}
+<PublicLayout title="MJ School - Shahpur | Affiliated to CBSE" hideHeaderAlerts={true}>
+  {/* 1. Hero Banner */}
   <section id="home">
     <HeroSlider client:load />
   </section>
 
-  {/* About School Section */}
+  {/* 2. Full-Width Alerts Strip immediately below Homepage Hero */}
+  <FlashNews client:idle />
+
+  {/* 3. About School Section */}
   <AboutSchoolSection />
 
   {/* Circulars, Notices & Student Hall of Fame */}

@@ -9,7 +9,7 @@ export const MAIN_NAV_ITEMS: NavItem[] = [
     name: 'About Us',
     href: '/about/principals-message/',
     children: [
-      { name: "Principal's Message", href: '/about/principals-message/' },
+      { name: "Head Mistress's Message", href: '/about/principals-message/' },
       { name: 'Infrastructure', href: '/about/infrastructure/' },
       { name: 'Facilities', href: '/facilities/' },
       { name: 'Faculty & Staff', href: '/about/faculty-staff/' },
@@ -161,3 +161,38 @@ export const HERO_SLIDES = [
     mobileImage: '/hero-mobile.png',
   },
 ];
+
+export interface FacilityCardItem {
+  key: string;
+  title: string;
+  desc: string;
+  tags: string[];
+}
+
+export const FACILITIES_CARDS: FacilityCardItem[] = [
+  {
+    key: 'classrooms',
+    title: 'Classrooms & Learning Spaces',
+    desc: 'Comfortable classroom spaces where children develop essential academic skills, explore new concepts, and build confidence through everyday learning.',
+    tags: ['CLASSROOM LEARNING', 'ACADEMIC FOUNDATIONS'],
+  },
+  {
+    key: 'hygiene',
+    title: 'Cleanliness & Hygiene',
+    desc: 'Essential sanitary facilities and an emphasis on personal hygiene help children develop healthy everyday habits.',
+    tags: ['HYGIENE', 'HEALTHY HABITS'],
+  },
+  {
+    key: 'play-swimming',
+    title: 'Early Years Play & Swimming',
+    desc: 'Opportunities for play and physical activity support the development of coordination, confidence, and active habits. A small swimming pool is planned for Junior and Senior KG children.',
+    tags: ['KINDERGARTEN', 'PHYSICAL DEVELOPMENT'],
+  },
+  {
+    key: 'traditions',
+    title: 'Indian Values & Traditions',
+    desc: 'Our Saraswati Devi statue and dedicated flagpole area reflect the importance of knowledge, respect, cultural heritage, and national pride in school life.',
+    tags: ['INDIAN CULTURE', 'VALUE-BASED LEARNING'],
+  },
+];
+

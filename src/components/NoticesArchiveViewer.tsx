@@ -138,22 +138,17 @@ export const NoticesArchiveViewer: React.FC = () => {
                       </p>
                     </td>
                     <td className="py-4 px-4 sm:px-6 text-right whitespace-nowrap">
-                      {notice.has_attachment ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (notice.attachment_url) {
-                              window.open(notice.attachment_url, '_blank', 'noopener,noreferrer');
-                            } else {
-                              alert(`Downloading circular: "${notice.title}"`);
-                            }
-                          }}
-                          className="inline-flex items-center gap-1 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] font-bold px-3 py-1.5 rounded transition-all cursor-pointer text-xs"
+                      {notice.has_attachment && notice.attachment_url && notice.attachment_url.trim() ? (
+                        <a
+                          href={notice.attachment_url.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] font-bold px-3 py-1.5 rounded transition-all cursor-pointer text-xs"
                           title="Download Circular PDF"
                         >
                           <Download className="w-3.5 h-3.5" />
-                          <span>PDF {notice.file_size ? `(${notice.file_size})` : ''}</span>
-                        </button>
+                          <span>Download Circular {notice.file_size ? `(${notice.file_size})` : ''}</span>
+                        </a>
                       ) : (
                         <span className="text-[11px] text-slate-400 italic">Notice Only</span>
                       )}

@@ -48,10 +48,45 @@ const highlights = [
   pageTitle="Our Campus & Infrastructure"
   pageSubtitle="A thoughtfully planned school environment where young minds build strong foundations, discover their interests, and grow with confidence."
   pageKey="infrastructure"
+  bannerClass="infrastructure-banner"
+  hideBannerText={true}
 >
-  <div class="py-12 bg-white">
+  <div class="pt-8 sm:pt-10 md:pt-12 pb-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
+      {/* Relocated Hero Content: Breadcrumb, Main Heading, and Subtitle */}
+      <div class="text-center max-w-4xl mx-auto mb-10 sm:mb-12">
+        <nav aria-label="Breadcrumb" class="mb-3 sm:mb-4">
+          <ol class="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm text-slate-600 font-medium">
+            <li>
+              <a href="/" class="hover:text-[#0B2545] text-slate-500 transition-colors">
+                Home
+              </a>
+            </li>
+            {breadcrumbs.map((crumb) => (
+              <li class="flex items-center gap-2">
+                <span class="text-slate-400 font-bold">→</span>
+                {crumb.href ? (
+                  <a href={crumb.href} class="hover:text-[#0B2545] text-slate-600 transition-colors">
+                    {crumb.label}
+                  </a>
+                ) : (
+                  <span class="text-[#C59B27] font-bold">{crumb.label}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold font-serif text-[#0B2545] tracking-tight leading-tight">
+          Our Campus & Infrastructure
+        </h1>
+
+        <p class="mt-3 sm:mt-4 text-sm sm:text-base md:text-lg text-slate-700 max-w-3xl mx-auto leading-relaxed">
+          A thoughtfully planned school environment where young minds build strong foundations, discover their interests, and grow with confidence.
+        </p>
+      </div>
+
       {/* Visual Hero Feature Placeholder */}
       <div class="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 mb-12 min-h-[220px] sm:min-h-[260px] md:h-80 flex flex-col justify-end p-6 sm:p-8">
         <div>

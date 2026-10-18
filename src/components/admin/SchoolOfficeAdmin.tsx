@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   isSupabaseConfigured,
   getSupabaseConfig,
@@ -15,7 +15,13 @@ import {
   deleteNotice,
   BANNER_PAGE_CATEGORIES,
   BannerPageCategory,
+  getFacilityImages,
+  getFacilityCardConfigs,
+  updateFacilityOrders,
+  updateFacilityImage,
+  removeFacilityImage,
 } from '../../lib/supabase';
+import { FACILITIES_CARDS, FacilityCardItem } from '../../data/schoolData';
 import {
   Image as ImageIcon,
   Users,
@@ -35,6 +41,7 @@ import {
   ArrowLeft,
   Calendar,
   Layers,
+  LayoutGrid,
   Search,
   Filter,
   GripVertical,
@@ -49,7 +56,7 @@ import {
   FileText,
 } from 'lucide-react';
 
-type AdminTab = 'banners' | 'students' | 'receipts' | 'notices';
+type AdminTab = 'banners' | 'students' | 'receipts' | 'notices' | 'gallery';
 
 interface SelectedImageState {
   file: File;
@@ -116,6 +123,328 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [isDeletingNotice, setIsDeletingNotice] = useState<boolean>(false);
   const [noticeSearchQuery, setNoticeSearchQuery] = useState<string>('');
   const [noticeCategoryFilter, setNoticeCategoryFilter] = useState<string>('All');
+
+  // Facilities Gallery management & reordering state
+  const [orderedFacilityCards, setOrderedFacilityCards] = useState<FacilityCardItem[]>(FACILITIES_CARDS);
+  const [facilityImages, setFacilityImages] = useState<Record<string, string>>({});
+  const [facilityImagesLoading, setFacilityImagesLoading] = useState<boolean>(false);
+  const [facilityDragIndex, setFacilityDragIndex] = useState<number | null>(null);
+  const [facilityDragOverIndex, setFacilityDragOverIndex] = useState<number | null>(null);
+  const [isReorderingFacilities, setIsReorderingFacilities] = useState<boolean>(false);
+  const [galleryGlobalMessage, setGalleryGlobalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedFacilityFiles, setSelectedFacilityFiles] = useState<Record<string, SelectedImageState | null>>({});
+  const [uploadingFacilityKey, setUploadingFacilityKey] = useState<string | null>(null);
+  const [facilityMessages, setFacilityMessages] = useState<Record<string, { type: 'success' | 'error'; text: string } | null>>({});
+
+  const loadFacilityImages = useCallback(async () => {
+    setFacilityImagesLoading(true);
+    try {
+      const configs = await getFacilityCardConfigs();
+
+      // Update image mapping
+      const imgMap: Record<string, string> = {};
+      for (const [key, val] of Object.entries(configs)) {
+        if (val.image_url) {
+          imgMap[key] = val.image_url;
+        }
+      }
+      setFacilityImages(imgMap);
+
+      // Sort cards according to saved display_order
+      const sortedCards = [...FACILITIES_CARDS].sort((a, b) => {
+        const defaultIndexA = FACILITIES_CARDS.findIndex((c) => c.key === a.key);
+        const defaultIndexB = FACILITIES_CARDS.findIndex((c) => c.key === b.key);
+        const orderA = configs[a.key]?.display_order ?? defaultIndexA;
+        const orderB = configs[b.key]?.display_order ?? defaultIndexB;
+        return orderA - orderB;
+      });
+      setOrderedFacilityCards(sortedCards);
+    } catch (err) {
+      console.warn('[GalleryAdmin] Error loading facility images & order:', err);
+    } finally {
+      setFacilityImagesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'gallery') {
+      loadFacilityImages();
+    }
+  }, [isAuthenticated, activeTab, loadFacilityImages]);
+
+  // Reorder Handlers for Facilities Grid Cards
+  const handleFacilityDragStart = (e: React.DragEvent, index: number) => {
+    setFacilityDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleFacilityDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (facilityDragIndex === null || facilityDragIndex === index) return;
+    setFacilityDragOverIndex(index);
+  };
+
+  const handleFacilityDragEnd = () => {
+    setFacilityDragIndex(null);
+    setFacilityDragOverIndex(null);
+  };
+
+  const handleFacilityDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (facilityDragIndex === null || facilityDragIndex === dropIndex) {
+      handleFacilityDragEnd();
+      return;
+    }
+
+    const prevList = [...orderedFacilityCards];
+    const updated = [...orderedFacilityCards];
+    const [draggedItem] = updated.splice(facilityDragIndex, 1);
+    updated.splice(dropIndex, 0, draggedItem);
+
+    setOrderedFacilityCards(updated);
+    handleFacilityDragEnd();
+
+    setIsReorderingFacilities(true);
+    setGalleryGlobalMessage(null);
+
+    const orderedKeys = updated.map((c) => c.key);
+    const result = await updateFacilityOrders(orderedKeys, currentUserEmail || 'Admin');
+    setIsReorderingFacilities(false);
+
+    if (!result.success) {
+      setOrderedFacilityCards(prevList);
+      setGalleryGlobalMessage({
+        type: 'error',
+        text: `Failed to save display order: ${result.error}. Previous order restored.`,
+      });
+    } else {
+      setGalleryGlobalMessage({
+        type: 'success',
+        text: 'Facilities card display sequence updated and saved to Supabase!',
+      });
+    }
+  };
+
+  const handleFacilityMoveOrder = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= orderedFacilityCards.length) return;
+
+    const prevList = [...orderedFacilityCards];
+    const updated = [...orderedFacilityCards];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    setOrderedFacilityCards(updated);
+    setIsReorderingFacilities(true);
+    setGalleryGlobalMessage(null);
+
+    const orderedKeys = updated.map((c) => c.key);
+    const result = await updateFacilityOrders(orderedKeys, currentUserEmail || 'Admin');
+    setIsReorderingFacilities(false);
+
+    if (!result.success) {
+      setOrderedFacilityCards(prevList);
+      setGalleryGlobalMessage({
+        type: 'error',
+        text: `Failed to save display order: ${result.error}. Previous order restored.`,
+      });
+    } else {
+      setGalleryGlobalMessage({
+        type: 'success',
+        text: 'Facilities card display sequence updated and saved to Supabase!',
+      });
+    }
+  };
+
+  const handleSelectFacilityImage = (cardKey: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset previous message for this card
+    setFacilityMessages((prev) => ({ ...prev, [cardKey]: null }));
+
+    // Format validation
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!validTypes.includes(file.type.toLowerCase())) {
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [cardKey]: {
+          type: 'error',
+          text: 'Invalid file format. Please upload a JPG, PNG, or WebP image.',
+        },
+      }));
+      e.target.value = '';
+      return;
+    }
+
+    // Size validation: max 5MB
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [cardKey]: {
+          type: 'error',
+          text: `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 5 MB.`,
+        },
+      }));
+      e.target.value = '';
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      setSelectedFacilityFiles((prev) => ({
+        ...prev,
+        [cardKey]: {
+          file,
+          previewUrl,
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          sizeKb: Math.round(file.size / 1024),
+        },
+      }));
+    };
+    img.onerror = () => {
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [cardKey]: {
+          type: 'error',
+          text: 'Failed to read image file. Please try another file.',
+        },
+      }));
+    };
+    img.src = previewUrl;
+  };
+
+  const handleCancelFacilitySelect = (cardKey: string) => {
+    const selected = selectedFacilityFiles[cardKey];
+    if (selected?.previewUrl) {
+      URL.revokeObjectURL(selected.previewUrl);
+    }
+    setSelectedFacilityFiles((prev) => ({ ...prev, [cardKey]: null }));
+    setFacilityMessages((prev) => ({ ...prev, [cardKey]: null }));
+  };
+
+  const handleUploadFacilityImage = async (card: FacilityCardItem) => {
+    const selected = selectedFacilityFiles[card.key];
+    if (!selected) return;
+
+    if (!supabase || !isSupabaseConfigured()) {
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: { type: 'error', text: 'Supabase client is not configured.' },
+      }));
+      return;
+    }
+
+    setUploadingFacilityKey(card.key);
+    setFacilityMessages((prev) => ({ ...prev, [card.key]: null }));
+
+    try {
+      const ext = selected.file.name.split('.').pop()?.toLowerCase() || 'png';
+      const timestamp = Date.now();
+      const storagePath = `facility-${card.key}-${timestamp}.${ext}`;
+
+      // 1. Upload to Supabase Storage bucket 'site-banners'
+      const { error: uploadError } = await supabase.storage
+        .from('site-banners')
+        .upload(storagePath, selected.file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      // 2. Get Public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('site-banners')
+        .getPublicUrl(storagePath);
+
+      const persistentUrl = publicUrlData?.publicUrl;
+      if (!persistentUrl) {
+        throw new Error('Failed to resolve public image URL from storage.');
+      }
+
+      // 3. Save to database
+      const saveRes = await updateFacilityImage(
+        card.key,
+        persistentUrl,
+        card.title,
+        currentUserEmail || 'Admin'
+      );
+
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || 'Failed to save image record to database.');
+      }
+
+      // 4. Update local state
+      setFacilityImages((prev) => ({ ...prev, [card.key]: persistentUrl }));
+      setSelectedFacilityFiles((prev) => ({ ...prev, [card.key]: null }));
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: {
+          type: 'success',
+          text: `Image for "${card.title}" uploaded and saved successfully!`,
+        },
+      }));
+    } catch (err: any) {
+      console.error('[GalleryAdmin] Upload error:', err);
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: {
+          type: 'error',
+          text: err.message || 'Image upload failed. Please try again.',
+        },
+      }));
+    } finally {
+      setUploadingFacilityKey(null);
+    }
+  };
+
+  const handleRemoveFacilityImage = async (card: FacilityCardItem) => {
+    if (!window.confirm(`Are you sure you want to remove the image for "${card.title}"? This card will display an empty frame on the website.`)) {
+      return;
+    }
+
+    setUploadingFacilityKey(card.key);
+    setFacilityMessages((prev) => ({ ...prev, [card.key]: null }));
+
+    try {
+      const res = await removeFacilityImage(card.key, currentUserEmail || 'Admin');
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to remove image record.');
+      }
+
+      setFacilityImages((prev) => {
+        const next = { ...prev };
+        delete next[card.key];
+        return next;
+      });
+      setSelectedFacilityFiles((prev) => ({ ...prev, [card.key]: null }));
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: {
+          type: 'success',
+          text: `Image removed. "${card.title}" now displays an empty frame.`,
+        },
+      }));
+    } catch (err: any) {
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: {
+          type: 'error',
+          text: err.message || 'Failed to remove image.',
+        },
+      }));
+    } finally {
+      setUploadingFacilityKey(null);
+    }
+  };
 
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -343,6 +672,14 @@ export const SchoolOfficeAdmin: React.FC = () => {
       return;
     }
 
+    if (noticeHasAttachment && !noticeAttachmentUrl.trim()) {
+      setNoticeSaveMessage({ type: 'error', text: 'Please enter a valid Attachment URL for the circular, or uncheck the attachment option.' });
+      return;
+    }
+
+    const trimmedAttachmentUrl = noticeAttachmentUrl.trim();
+    const hasValidAttachment = Boolean(noticeHasAttachment && trimmedAttachmentUrl);
+
     setIsSavingNotice(true);
     setNoticeSaveMessage(null);
 
@@ -355,9 +692,9 @@ export const SchoolOfficeAdmin: React.FC = () => {
           description: noticeDescription.trim(),
           grades: noticeGrades.length > 0 ? noticeGrades : ['All Grades'],
           is_new: noticeIsNew,
-          has_attachment: noticeHasAttachment,
-          attachment_url: noticeAttachmentUrl.trim() || null,
-          file_size: noticeHasAttachment ? (noticeFileSize.trim() || '300 KB') : null,
+          has_attachment: hasValidAttachment,
+          attachment_url: hasValidAttachment ? trimmedAttachmentUrl : null,
+          file_size: hasValidAttachment ? (noticeFileSize.trim() || 'PDF') : null,
           is_published: noticeIsPublished,
           display_order: Number(noticeDisplayOrder) || 0,
           updated_by: currentUserEmail || 'Admin',
@@ -373,9 +710,9 @@ export const SchoolOfficeAdmin: React.FC = () => {
           description: noticeDescription.trim(),
           grades: noticeGrades.length > 0 ? noticeGrades : ['All Grades'],
           is_new: noticeIsNew,
-          has_attachment: noticeHasAttachment,
-          attachment_url: noticeAttachmentUrl.trim() || null,
-          file_size: noticeHasAttachment ? (noticeFileSize.trim() || '300 KB') : null,
+          has_attachment: hasValidAttachment,
+          attachment_url: hasValidAttachment ? trimmedAttachmentUrl : null,
+          file_size: hasValidAttachment ? (noticeFileSize.trim() || 'PDF') : null,
           is_published: noticeIsPublished,
           display_order: Number(noticeDisplayOrder) || noticesList.length + 1,
           updated_by: currentUserEmail || 'Admin',
@@ -1194,6 +1531,22 @@ export const SchoolOfficeAdmin: React.FC = () => {
             >
               <Bell className="w-4 h-4" />
               <span>4. Notices &amp; Events</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('gallery');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors text-left cursor-pointer ${
+                activeTab === 'gallery'
+                  ? 'bg-[#C59B27] text-[#0B2545] shadow-sm font-black'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span>5. Gallery</span>
             </button>
           </nav>
         </div>
@@ -2286,11 +2639,17 @@ export const SchoolOfficeAdmin: React.FC = () => {
                               </div>
                             </td>
                             <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              {n.has_attachment ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                              {n.has_attachment && n.attachment_url ? (
+                                <a
+                                  href={n.attachment_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded transition-colors"
+                                  title={`Open attachment: ${n.attachment_url}`}
+                                >
                                   <FileText className="w-3 h-3 text-blue-600" />
                                   <span>{n.file_size || 'PDF'}</span>
-                                </span>
+                                </a>
                               ) : (
                                 <span className="text-[10px] text-slate-400 italic">None</span>
                               )}
@@ -2664,6 +3023,340 @@ export const SchoolOfficeAdmin: React.FC = () => {
           </div>
         )}
 
+        {/* 5. Facilities Gallery Management Section */}
+        {activeTab === 'gallery' && (
+          <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="bg-white border border-slate-200 p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-[#C59B27] inline-block" />
+                  <h2 className="text-xl sm:text-2xl font-serif font-black text-[#0B2545]">
+                    Facilities Gallery &amp; Card Images
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  Manage photography and custom display sequence for the four primary facility cards on{' '}
+                  <span className="font-semibold text-[#0B2545]">/facilities/</span>.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={loadFacilityImages}
+                  disabled={facilityImagesLoading || isReorderingFacilities}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                  title="Reload images & order from Supabase"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${facilityImagesLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+                <a
+                  href="/facilities/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold transition-colors shadow-xs"
+                >
+                  <span>View Public Page</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-[#C59B27]" />
+                </a>
+              </div>
+            </div>
+
+            {/* Reorder instructions & status bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 p-3.5 px-4 text-xs">
+              <div className="flex items-center gap-2 text-slate-600">
+                <GripVertical className="w-4 h-4 text-[#C59B27] shrink-0" />
+                <span>
+                  <strong>Sequence Control:</strong> Drag the 6-dot handle (:::) on any card or use the Move Up / Down buttons to reorder the 2×2 grid. Changes sync live to <code className="text-[#0B2545] bg-slate-100 px-1 py-0.5 font-bold">/facilities/</code>.
+                </span>
+              </div>
+              {isReorderingFacilities && (
+                <div className="flex items-center gap-1.5 text-[#0B2545] font-bold shrink-0">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
+                  <span>Saving sequence...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Global success / error message */}
+            {galleryGlobalMessage && (
+              <div
+                className={`p-3 text-xs rounded border flex items-start gap-2 ${
+                  galleryGlobalMessage.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}
+              >
+                {galleryGlobalMessage.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                )}
+                <span className="flex-1 font-semibold">{galleryGlobalMessage.text}</span>
+              </div>
+            )}
+
+            {/* 2x2 Grid of the 4 Facility Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {orderedFacilityCards.map((card, idx) => {
+                const currentSavedUrl = facilityImages[card.key];
+                const selectedFile = selectedFacilityFiles[card.key];
+                const isUploading = uploadingFacilityKey === card.key;
+                const message = facilityMessages[card.key];
+                const fileInputId = `facility-input-${card.key}`;
+                const isDragged = facilityDragIndex === idx;
+                const isDragOver = facilityDragOverIndex === idx;
+
+                return (
+                  <div
+                    key={card.key}
+                    draggable
+                    onDragStart={(e) => handleFacilityDragStart(e, idx)}
+                    onDragOver={(e) => handleFacilityDragOver(e, idx)}
+                    onDragEnd={handleFacilityDragEnd}
+                    onDrop={(e) => handleFacilityDrop(e, idx)}
+                    className={`bg-white border shadow-sm flex flex-col justify-between transition-all duration-150 ${
+                      isDragOver
+                        ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
+                        : isDragged
+                        ? 'opacity-40 border-dashed border-[#0B2545]'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {/* Card Top Header with 6-dot drag handle, Position, Move Buttons & Status */}
+                    <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
+                      <div className="flex items-center gap-2.5">
+                        {/* 2x3 Drag Handle (6 dots) */}
+                        <div
+                          className="cursor-grab active:cursor-grabbing p-1.5 text-slate-400 hover:text-[#0B2545] hover:bg-slate-200/70 rounded transition-colors touch-none select-none"
+                          title="Drag 6-dot handle to reorder card sequence"
+                          aria-label="Drag handle to reorder"
+                        >
+                          <GripVertical className="w-5 h-5 text-slate-500" />
+                        </div>
+
+                        {/* Position Badge */}
+                        <span className="px-2 py-0.5 bg-[#0B2545] text-white font-black text-xs uppercase tracking-wider rounded">
+                          #{idx + 1}
+                        </span>
+
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-slate-900 text-sm font-serif">
+                              {card.title}
+                            </h3>
+                            <span className="text-[10px] text-slate-400 font-mono bg-white px-1.5 py-0.5 border border-slate-200 rounded">
+                              ID: {card.key}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right side: Move Up / Down Buttons & Published Badge */}
+                      <div className="flex items-center gap-2">
+                        {/* Move Up Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleFacilityMoveOrder(idx, 'up')}
+                          disabled={idx === 0 || isReorderingFacilities}
+                          className="p-1.5 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
+                          title="Move card earlier in sequence"
+                          aria-label={`Move ${card.title} up`}
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Move Down Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleFacilityMoveOrder(idx, 'down')}
+                          disabled={idx === orderedFacilityCards.length - 1 || isReorderingFacilities}
+                          className="p-1.5 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
+                          title="Move card later in sequence"
+                          aria-label={`Move ${card.title} down`}
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+
+                        {currentSavedUrl ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Image Published</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                            <span>Empty Frame</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Image Preview Frame (16:9 Aspect Ratio) */}
+                    <div className="relative aspect-[16/9] bg-slate-100 border-b border-slate-200 overflow-hidden flex items-center justify-center">
+                      {selectedFile ? (
+                        <>
+                          <img
+                            src={selectedFile.previewUrl}
+                            alt={`Preview for ${card.title}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                            Pending Save: {selectedFile.width}×{selectedFile.height} ({selectedFile.sizeKb} KB)
+                          </div>
+                        </>
+                      ) : currentSavedUrl ? (
+                        <>
+                          <img
+                            src={currentSavedUrl}
+                            alt={card.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[9.5px] font-bold px-2 py-0.5 rounded shadow">
+                            Active Image
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center p-6 text-slate-400">
+                          <ImageIcon className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-1" />
+                          <p className="text-xs font-semibold text-slate-500">No image uploaded</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            This card currently displays an empty placeholder frame on the public page.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Content Summary */}
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+                      <div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          {card.desc}
+                        </p>
+                        <div className="pt-2 flex flex-wrap gap-1.5 mt-2">
+                          {card.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="text-[9.5px] font-bold text-[#0B2545] bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Card Notification */}
+                      {message && (
+                        <div
+                          className={`p-2.5 text-xs rounded border flex items-start gap-2 ${
+                            message.type === 'success'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                              : 'bg-rose-50 border-rose-200 text-rose-800'
+                          }`}
+                        >
+                          {message.type === 'success' ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                          )}
+                          <span className="flex-1 font-medium">{message.text}</span>
+                        </div>
+                      )}
+
+                      {/* Actions Area */}
+                      <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                        {/* Hidden File Input */}
+                        <input
+                          id={fileInputId}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(e) => handleSelectFacilityImage(card.key, e)}
+                        />
+
+                        {selectedFile ? (
+                          // File Selected: Save & Publish or Cancel
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <button
+                              type="button"
+                              disabled={isUploading}
+                              onClick={() => handleUploadFacilityImage(card)}
+                              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
+                                  <span>Uploading...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Save className="w-3.5 h-3.5 text-[#C59B27]" />
+                                  <span>Save &amp; Publish Image</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isUploading}
+                              onClick={() => handleCancelFacilitySelect(card.key)}
+                              className="px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          // Normal state: Upload / Change Image & Remove Image
+                          <div className="flex items-center justify-between w-full">
+                            <label
+                              htmlFor={fileInputId}
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] text-xs font-bold rounded transition-colors cursor-pointer"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>{currentSavedUrl ? 'Change Image' : 'Upload Image'}</span>
+                            </label>
+
+                            {currentSavedUrl && (
+                              <button
+                                type="button"
+                                disabled={isUploading}
+                                onClick={() => handleRemoveFacilityImage(card)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                title="Remove image and reset to empty frame"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Remove Image</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Note & Guidelines footer */}
+            <div className="bg-slate-50 border border-slate-200 rounded p-4 text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-[#0B2545] shrink-0" />
+                <span>
+                  <strong>Tip:</strong> Card order is reflected directly in the 2×2 grid on the public page. Upload horizontal photography in 16:9 ratio (e.g. 1280×720 or 1920×1080). JPG, PNG, and WebP up to 5 MB are supported.
+                </span>
+              </div>
+              <a
+                href="/facilities/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 font-bold text-[#0B2545] hover:text-[#C59B27] underline"
+              >
+                Inspect /facilities/ &rarr;
+              </a>
+            </div>
+          </div>
+        )}
       </main>
 
     </div>

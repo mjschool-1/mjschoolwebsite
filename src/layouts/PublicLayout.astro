@@ -1,9 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
-import { TopBar } from '../components/TopBar';
 import { Header } from '../components/Header';
 import { Navbar } from '../components/Navbar';
-import { FlashNews } from '../components/HeroSlider';
 import { Footer } from '../components/Footer';
 import { PageBanner } from '../components/PageBanner';
 
@@ -19,6 +17,9 @@ interface Props {
   pageTitle?: string;
   pageSubtitle?: string;
   pageKey?: string;
+  bannerClass?: string;
+  hideBannerText?: boolean;
+  hideHeaderAlerts?: boolean;
 }
 
 const {
@@ -28,30 +29,31 @@ const {
   pageTitle,
   pageSubtitle,
   pageKey,
+  bannerClass,
+  hideBannerText,
+  hideHeaderAlerts,
 } = Astro.props;
+
+const currentPath = Astro.url.pathname;
 ---
 
 <BaseLayout title={title} description={description}>
-  {/* 1. Top Utility Contact Bar */}
-  <TopBar client:idle />
-
-  {/* 2. Main Header with School Crest and Search Bar */}
+  {/* 1. Main Header with School Crest and Search Bar */}
   <Header client:idle />
 
-  {/* 3. Primary Sticky Navigation Bar */}
-  <Navbar client:load />
-
-  {/* 4. Live Circulars Marquee / Flash News */}
-  <FlashNews client:idle />
+  {/* 2. Primary Sticky Navigation Bar */}
+  <Navbar client:load pathname={currentPath} />
 
   {/* 5. Subpage Banner & Breadcrumb Hierarchy */}
-  {pageKey && pageTitle ? (
+  {pageKey ? (
     <PageBanner
       client:load
       pageKey={pageKey}
-      pageTitle={pageTitle}
+      pageTitle={pageTitle || ''}
       pageSubtitle={pageSubtitle}
       breadcrumbs={breadcrumbs}
+      className={bannerClass}
+      hideTextOverlay={hideBannerText}
     />
   ) : pageTitle ? (
     <div class="bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner">

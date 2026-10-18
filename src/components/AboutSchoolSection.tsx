@@ -44,7 +44,7 @@ export const AboutSchoolSection: React.FC = () => {
 
         </div>
 
-        {/* Principal's Desk Message */}
+        {/* Head Mistress's Desk Message */}
         <div id="principal-message" className="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden scroll-mt-24 shadow-xl">
           <div className="absolute top-0 right-0 p-8 text-white/5 pointer-events-none">
             <Quote className="w-48 h-48 -mr-12 -mt-12" />
@@ -56,7 +56,7 @@ export const AboutSchoolSection: React.FC = () => {
               <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full mx-auto md:mx-0 overflow-hidden border-4 border-[#C59B27] bg-[#133E6E]/60 shadow-lg mb-3 flex items-center justify-center">
                 <User className="w-16 h-16 sm:w-20 sm:h-20 text-white/30" />
               </div>
-              <h4 className="font-bold text-base text-white">Principal</h4>
+              <h4 className="font-bold text-base text-white">Head Mistress</h4>
               <p className="text-xs text-[#F6D55C] font-medium">MJ School, Shahapur</p>
               <p className="text-[10px] text-slate-400 mt-1">National CBSE Best Educator Awardee</p>
             </div>
@@ -64,7 +64,7 @@ export const AboutSchoolSection: React.FC = () => {
             <div className="md:col-span-8 space-y-3">
               <div className="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded text-xs text-[#F6D55C] font-semibold">
                 <Quote className="w-3 h-3" />
-                <span>From the Principal's Desk</span>
+                <span>From the Head Mistress's Desk</span>
               </div>
               <h3 className="text-lg sm:text-xl font-bold font-serif text-white">
                 "Empowering Young Minds to Conquer the Challenges of Tomorrow"

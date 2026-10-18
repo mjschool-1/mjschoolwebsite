@@ -1,194 +1,27 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { FileText, Users, TrendingUp } from 'lucide-react';
+import { AcademicSyllabusTable } from '../../components/AcademicSyllabusTable';
 
 const breadcrumbs = [
   { label: 'Academics', href: '/academics/syllabus/' },
-  { label: 'Curriculum & Syllabus' },
-];
-
-const curriculumStages = [
-  {
-    stageLabel: 'NURSERY',
-    heading: 'The Joy of First Learning',
-    description: 'Children begin discovering the world through play, stories, songs, movement, and guided activities that encourage communication, curiosity, and social development.',
-    sectionLabel: 'LEARNING AREAS',
-    items: [
-      'Language & Listening',
-      'Early Numeracy',
-      'Rhymes & Stories',
-      'Art & Play',
-      'Social Skills',
-    ],
-  },
-  {
-    stageLabel: 'JUNIOR KG',
-    heading: 'Discover, Explore & Express',
-    description: 'Children strengthen early language and number skills through hands-on activities, creative expression, and opportunities to explore their surroundings.',
-    sectionLabel: 'LEARNING AREAS',
-    items: [
-      'English Readiness',
-      'Number Concepts',
-      'Hindi / Language',
-      'Environmental Awareness',
-      'Creative Activities',
-    ],
-  },
-  {
-    stageLabel: 'SENIOR KG',
-    heading: 'Ready for Primary School',
-    description: 'Children develop greater independence and school readiness through early reading and writing, number operations, communication, and guided problem-solving.',
-    sectionLabel: 'LEARNING AREAS',
-    items: [
-      'Reading & Writing',
-      'Mathematical Readiness',
-      'Language Development',
-      'World Around Us',
-      'Art & Physical Activities',
-    ],
-  },
-  {
-    stageLabel: 'GRADES 1–5',
-    heading: 'Building Knowledge & Confidence',
-    description: 'A structured academic programme develops subject understanding, independent thinking, communication, creativity, and problem-solving skills, with learning progressing at every grade level.',
-    sectionLabel: 'CORE SUBJECTS',
-    items: [
-      'English',
-      'Hindi / Second Language',
-      'Mathematics',
-      'Environmental Studies',
-      'Computer Awareness',
-      'Art & Craft',
-      'Physical Education',
-    ],
-  },
-];
-
-const assessmentItems = [
-  {
-    title: 'Regular Written Assessments',
-    description: 'Monitor understanding and reinforce concepts.',
-    icon: FileText,
-  },
-  {
-    title: 'Classroom Participation',
-    description: 'Observe communication, engagement, and practical learning.',
-    icon: Users,
-  },
-  {
-    title: 'Continuous Progress',
-    description: 'Encourage steady improvement through feedback and guidance.',
-    icon: TrendingUp,
-  },
+  { label: 'Academic Syllabus' },
 ];
 ---
 
 <PublicLayout
-  title="Curriculum & Syllabus | MJ School Shahpur"
-  description="Building strong foundations through engaging lessons, meaningful activities, and values-based learning from Nursery to Grade 5 at MJ School, Shahpur."
+  title="Academic Syllabus | MJ School Shahpur"
+  description="Explore the subjects taught at each grade at MJ School, Shahpur."
   breadcrumbs={breadcrumbs}
-  pageTitle="Curriculum & Syllabus"
-  pageSubtitle="Building strong foundations through engaging lessons, meaningful activities, and values-based learning from Nursery to Grade 5."
+  pageTitle="Academic Syllabus"
+  pageSubtitle="Explore the subjects taught at each grade at MJ School."
   pageKey="syllabus"
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      {/* Learning Approach Panel */}
-      <div class="bg-slate-50 border border-slate-200 p-6 sm:p-8 mb-12">
-        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div class="space-y-2 max-w-3xl">
-            <span class="text-xs font-bold uppercase tracking-wider text-[#C59B27] block">
-              OUR LEARNING APPROACH
-            </span>
-            <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] leading-snug">
-              Learning That Builds Strong Foundations
-            </h2>
-            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
-              At MJ School, our curriculum focuses on developing essential academic skills, curiosity, creativity, and confidence. Through structured lessons, interactive activities, and regular assessments, we help children understand concepts, express ideas, and develop a love for learning.
-            </p>
-          </div>
-          <div class="shrink-0 w-full sm:w-auto">
-            <a
-              href="#curriculum-stages"
-              class="inline-block w-full sm:w-auto text-center bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold uppercase tracking-wider px-6 py-3 transition-colors shadow-sm"
-            >
-              Explore Our Grades
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* Four Curriculum Stage Sections */}
-      <div id="curriculum-stages" class="scroll-mt-28 mb-12">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {curriculumStages.map((stage) => (
-            <div class="bg-white border border-slate-200 p-6 sm:p-8 flex flex-col justify-between hover:border-slate-300 transition-colors">
-              <div>
-                <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
-                <span class="text-xs font-bold text-[#C59B27] tracking-wider uppercase block mb-1">
-                  {stage.stageLabel}
-                </span>
-                <h3 class="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
-                  {stage.heading}
-                </h3>
-                <p class="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
-                  {stage.description}
-                </p>
-              </div>
-
-              <div class="pt-4 border-t border-slate-100">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                  {stage.sectionLabel}
-                </span>
-                <div class="flex flex-wrap gap-1.5 sm:gap-2">
-                  {stage.items.map((item) => (
-                    <span class="text-[11px] font-medium bg-slate-50 border border-slate-200 text-slate-700 px-2.5 py-1">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Assessment & Learning Progress */}
-      <div class="bg-slate-50 border border-slate-200 p-6 sm:p-8">
-        <div class="max-w-3xl mb-8">
-          <div class="w-8 h-0.5 bg-[#C59B27] mb-3"></div>
-          <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] mb-2 leading-snug">
-            Assessment &amp; Learning Progress
-          </h2>
-          <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            We believe every child's progress matters. Regular assessments, classroom participation, and activity-based learning help teachers understand students' strengths and identify areas where additional guidance may be useful.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {assessmentItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div class="bg-white border border-slate-200 p-5 flex flex-col justify-between">
-                <div>
-                  <div class="w-9 h-9 bg-slate-100 text-[#0B2545] flex items-center justify-center mb-3.5 border border-slate-200/60">
-                    <Icon class="w-4 h-4 text-[#C59B27]" />
-                  </div>
-                  <h3 class="font-bold text-sm font-serif text-[#0B2545] mb-1.5">
-                    {item.title}
-                  </h3>
-                  <p class="text-xs text-slate-600 leading-relaxed">
-                    {item.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Grade-wise Academic Syllabus Table */}
+      <AcademicSyllabusTable client:load />
 
     </div>
   </div>
 </PublicLayout>
-

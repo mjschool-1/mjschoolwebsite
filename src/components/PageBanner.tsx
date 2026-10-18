@@ -12,9 +12,11 @@ interface BreadcrumbItem {
 
 interface PageBannerProps {
   pageKey: string;
-  pageTitle: string;
+  pageTitle?: string;
   pageSubtitle?: string;
   breadcrumbs?: BreadcrumbItem[];
+  className?: string;
+  hideTextOverlay?: boolean;
 }
 
 export const PageBanner: React.FC<PageBannerProps> = ({
@@ -22,11 +24,17 @@ export const PageBanner: React.FC<PageBannerProps> = ({
   pageTitle,
   pageSubtitle,
   breadcrumbs,
+  className,
+  hideTextOverlay,
 }) => {
   const [banners, setBanners] = useState<SiteBannerRecord[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isTabVisible, setIsTabVisible] = useState<boolean>(true);
+
+  const shouldHideOverlay = Boolean(
+    hideTextOverlay || pageKey === 'infrastructure' || className?.includes('infrastructure-banner')
+  );
 
   // 1. Fetch published banners for this specific page key
   useEffect(() => {
@@ -74,10 +82,31 @@ export const PageBanner: React.FC<PageBannerProps> = ({
     setCurrentIndex(index);
   }, []);
 
-  // Fallback: If no published banner is configured for this page, render the clean institutional heading
+  // Fallback: If no published banner is configured for this page
   if (banners.length === 0) {
+    if (shouldHideOverlay) {
+      return (
+        <div className={`relative w-full border-b-4 border-[#C59B27] bg-[#07172C] select-none ${className || ''}`}>
+          <div className="hidden md:block w-full aspect-[1920/640] relative overflow-hidden">
+            <img
+              src="/hero-desktop.png"
+              alt={pageTitle || "Page Banner"}
+              className="w-full h-full object-cover block"
+            />
+          </div>
+          <div className="block md:hidden w-full aspect-[535/378] relative overflow-hidden">
+            <img
+              src="/hero-mobile.png"
+              alt={pageTitle || "Page Banner"}
+              className="w-full h-full object-cover block"
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner">
+      <div className={`bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner ${className || ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {breadcrumbs && breadcrumbs.length > 0 && (
             <nav aria-label="Breadcrumb" className="mb-3">
@@ -121,7 +150,7 @@ export const PageBanner: React.FC<PageBannerProps> = ({
 
   return (
     <div
-      className="relative w-full border-b-4 border-[#C59B27] bg-[#07172C] select-none"
+      className={`relative w-full border-b-4 border-[#C59B27] bg-[#07172C] select-none ${className || ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -132,49 +161,51 @@ export const PageBanner: React.FC<PageBannerProps> = ({
         <img
           key={`desktop-${currentBanner.id || currentIndex}`}
           src={desktopSrc}
-          alt={currentBanner.title || pageTitle}
+          alt={currentBanner.title || pageTitle || "Page Banner"}
           className="w-full h-full object-cover block animate-fadeIn"
           loading="eager"
         />
 
-        {/* Contrast Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#07172C]/90 via-[#0B2545]/70 to-[#07172C]/30 flex flex-col justify-center px-6 lg:px-12">
-          <div className="max-w-7xl mx-auto w-full">
-            {breadcrumbs && breadcrumbs.length > 0 && (
-              <nav aria-label="Breadcrumb" className="mb-3">
-                <ol className="flex flex-wrap items-center gap-2 text-xs text-slate-200 drop-shadow-sm">
-                  <li>
-                    <a href="/" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1 font-medium">
-                      <span>Home</span>
-                    </a>
-                  </li>
-                  {breadcrumbs.map((crumb, idx) => (
-                    <li key={idx} className="flex items-center gap-2">
-                      <span className="text-[#C59B27] font-bold">→</span>
-                      {crumb.href ? (
-                        <a href={crumb.href} className="hover:text-[#F6D55C] transition-colors font-medium">
-                          {crumb.label}
-                        </a>
-                      ) : (
-                        <span className="text-[#F6D55C] font-semibold">{crumb.label}</span>
-                      )}
+        {/* Contrast Gradient Overlay: Omitted when shouldHideOverlay is true */}
+        {!shouldHideOverlay && (
+          <div className="absolute inset-0 flex flex-col px-6 lg:px-12 bg-gradient-to-r from-[#07172C]/90 via-[#0B2545]/70 to-[#07172C]/30 justify-center">
+            <div className="max-w-7xl mx-auto w-full">
+              {breadcrumbs && breadcrumbs.length > 0 && (
+                <nav aria-label="Breadcrumb" className="mb-2.5 sm:mb-3">
+                  <ol className="flex flex-wrap items-center gap-2 text-xs text-slate-200 drop-shadow-sm">
+                    <li>
+                      <a href="/" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1 font-medium">
+                        <span>Home</span>
+                      </a>
                     </li>
-                  ))}
-                </ol>
-              </nav>
-            )}
+                    {breadcrumbs.map((crumb, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="text-[#C59B27] font-bold">→</span>
+                        {crumb.href ? (
+                          <a href={crumb.href} className="hover:text-[#F6D55C] transition-colors font-medium">
+                            {crumb.label}
+                          </a>
+                        ) : (
+                          <span className="text-[#F6D55C] font-semibold">{crumb.label}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </nav>
+              )}
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold font-serif tracking-tight text-white drop-shadow-md">
-              {pageTitle}
-            </h1>
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold font-serif tracking-tight text-white drop-shadow-md">
+                {pageTitle}
+              </h1>
 
-            {pageSubtitle && (
-              <p className="mt-2 text-xs sm:text-sm lg:text-base text-slate-100 max-w-3xl leading-relaxed drop-shadow-sm font-normal">
-                {pageSubtitle}
-              </p>
-            )}
+              {pageSubtitle && (
+                <p className="mt-2.5 text-xs sm:text-sm lg:text-base text-slate-100 max-w-2xl lg:max-w-3xl leading-relaxed drop-shadow-sm font-normal">
+                  {pageSubtitle}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ================================================================== */}
@@ -184,39 +215,41 @@ export const PageBanner: React.FC<PageBannerProps> = ({
         <img
           key={`mobile-${currentBanner.id || currentIndex}`}
           src={mobileSrc}
-          alt={currentBanner.title || pageTitle}
+          alt={currentBanner.title || pageTitle || "Page Banner"}
           className="w-full h-full object-cover block animate-fadeIn"
           loading="eager"
         />
 
-        {/* Contrast Gradient Overlay for Mobile */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#07172C]/95 via-[#0B2545]/75 to-[#07172C]/30 flex flex-col justify-end p-4 sm:p-5">
-          {breadcrumbs && breadcrumbs.length > 0 && (
-            <nav aria-label="Breadcrumb" className="mb-1.5">
-              <ol className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-slate-200 drop-shadow-sm">
-                <li>
-                  <a href="/" className="hover:text-[#F6D55C] transition-colors">Home</a>
-                </li>
-                {breadcrumbs.map((crumb, idx) => (
-                  <li key={idx} className="flex items-center gap-1.5">
-                    <span className="text-[#C59B27] font-bold">→</span>
-                    <span className="text-[#F6D55C] font-semibold truncate max-w-[150px]">{crumb.label}</span>
+        {/* Contrast Gradient Overlay for Mobile: Omitted when shouldHideOverlay is true */}
+        {!shouldHideOverlay && (
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07172C]/95 via-[#0B2545]/75 to-[#07172C]/30 flex flex-col justify-end p-4 sm:p-5">
+            {breadcrumbs && breadcrumbs.length > 0 && (
+              <nav aria-label="Breadcrumb" className="mb-1.5">
+                <ol className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-slate-200 drop-shadow-sm">
+                  <li>
+                    <a href="/" className="hover:text-[#F6D55C] transition-colors">Home</a>
                   </li>
-                ))}
-              </ol>
-            </nav>
-          )}
+                  {breadcrumbs.map((crumb, idx) => (
+                    <li key={idx} className="flex items-center gap-1.5">
+                      <span className="text-[#C59B27] font-bold">→</span>
+                      <span className="text-[#F6D55C] font-semibold truncate max-w-[150px]">{crumb.label}</span>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            )}
 
-          <h1 className="text-xl sm:text-2xl font-extrabold font-serif tracking-tight text-white drop-shadow-md leading-tight">
-            {pageTitle}
-          </h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold font-serif tracking-tight text-white drop-shadow-md leading-tight">
+              {pageTitle}
+            </h1>
 
-          {pageSubtitle && (
-            <p className="mt-1 text-[11px] sm:text-xs text-slate-200 line-clamp-2 leading-snug drop-shadow-sm">
-              {pageSubtitle}
-            </p>
-          )}
-        </div>
+            {pageSubtitle && (
+              <p className="mt-1 text-[11px] sm:text-xs text-slate-200 line-clamp-2 leading-snug drop-shadow-sm">
+                {pageSubtitle}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ================================================================== */}
