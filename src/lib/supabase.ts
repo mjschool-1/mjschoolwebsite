@@ -89,7 +89,66 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured()
     })
   : null;
 
-// Verified local default assets used as failover
+// Multi-Page Banner Configuration: exact mapping of page keys to routes and descriptions
+export interface BannerPageCategory {
+  key: string;
+  name: string;
+  route: string;
+  description: string;
+}
+
+export const BANNER_PAGE_CATEGORIES: BannerPageCategory[] = [
+  {
+    key: 'homepage',
+    name: 'Homepage',
+    route: '/',
+    description: 'Main homepage hero carousel',
+  },
+  {
+    key: 'infrastructure',
+    name: 'Infrastructure',
+    route: '/about/infrastructure',
+    description: 'Campus infrastructure & environment page',
+  },
+  {
+    key: 'facilities',
+    name: 'Facilities',
+    route: '/facilities',
+    description: 'School facilities & learning spaces page',
+  },
+  {
+    key: 'faculty_staff',
+    name: 'Faculty & Staff',
+    route: '/about/faculty-staff/',
+    description: 'Academic leadership, teachers & staff page',
+  },
+  {
+    key: 'syllabus',
+    name: 'Syllabus',
+    route: '/academics/syllabus',
+    description: 'Curriculum, learning stages & syllabus page',
+  },
+  {
+    key: 'gallery',
+    name: 'Gallery',
+    route: '/gallery',
+    description: 'School moments, activities & photo gallery page',
+  },
+  {
+    key: 'events_activities',
+    name: 'Events & Activities',
+    route: '/academics/events-activities',
+    description: 'Annual events, festivals & co-curricular clubs page',
+  },
+];
+
+export const resolveBannerUrl = (path: string, defaultPath: string = '/hero-desktop.png') => {
+  if (!path) return `${import.meta.env.BASE_URL}${defaultPath.replace(/^\//, '')}`;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+};
+
+// Verified local default assets used as failover for homepage
 export const DEFAULT_HOMEPAGE_BANNER: SiteBannerRecord = {
   id: 'default-homepage-banner',
   page_key: 'homepage',
@@ -105,11 +164,11 @@ export const DEFAULT_HOMEPAGE_BANNER: SiteBannerRecord = {
 
 /**
  * Fetch all active published banners for a specific page, ordered deterministically.
- * Falls back to default local assets if Supabase is unconfigured, unreachable, or records are missing.
+ * Falls back to default local assets for homepage if unconfigured, or empty list for subpages.
  */
 export async function getPublishedBanners(pageKey: string = 'homepage'): Promise<SiteBannerRecord[]> {
   if (!supabase || !isSupabaseConfigured()) {
-    return [DEFAULT_HOMEPAGE_BANNER];
+    return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
   }
 
   try {
@@ -133,34 +192,34 @@ export async function getPublishedBanners(pageKey: string = 'homepage'): Promise
     }
 
     if (error || !data || data.length === 0) {
-      return [DEFAULT_HOMEPAGE_BANNER];
+      return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
     }
 
     return data.map((b: any, idx: number) => ({
       ...b,
-      title: b.title || `Homepage Banner ${idx + 1}`,
+      title: b.title || `${pageKey} Banner ${idx + 1}`,
       display_order: b.display_order ?? idx,
     })) as SiteBannerRecord[];
   } catch (err) {
-    console.warn(`[getPublishedBanners] Failover to default banner for ${pageKey}:`, err);
-    return [DEFAULT_HOMEPAGE_BANNER];
+    console.warn(`[getPublishedBanners] Failover for ${pageKey}:`, err);
+    return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
   }
 }
 
 /**
  * Fetch the active published banner for a specific page (backward-compatible).
  */
-export async function getPublishedBanner(pageKey: string = 'homepage'): Promise<SiteBannerRecord> {
+export async function getPublishedBanner(pageKey: string = 'homepage'): Promise<SiteBannerRecord | null> {
   const banners = await getPublishedBanners(pageKey);
-  return banners[0] || DEFAULT_HOMEPAGE_BANNER;
+  return banners[0] || (pageKey === 'homepage' ? DEFAULT_HOMEPAGE_BANNER : null);
 }
 
 /**
- * Fetch all banners (published and drafts) for admin management.
+ * Fetch all banners (published and drafts) for admin management of a specific page category.
  */
 export async function getAllBanners(pageKey: string = 'homepage'): Promise<SiteBannerRecord[]> {
   if (!supabase || !isSupabaseConfigured()) {
-    return [DEFAULT_HOMEPAGE_BANNER];
+    return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
   }
 
   try {
@@ -182,21 +241,22 @@ export async function getAllBanners(pageKey: string = 'homepage'): Promise<SiteB
     }
 
     if (error) {
-      throw error;
+      console.warn(`[getAllBanners] Database query error for ${pageKey}, using fallback:`, error.message);
+      return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
     }
 
     if (!data || data.length === 0) {
-      return [DEFAULT_HOMEPAGE_BANNER];
+      return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
     }
 
     return data.map((b: any, idx: number) => ({
       ...b,
-      title: b.title || `Homepage Banner ${idx + 1}`,
+      title: b.title || `${pageKey} Banner ${idx + 1}`,
       display_order: b.display_order ?? idx,
     })) as SiteBannerRecord[];
   } catch (err) {
-    console.error(`[getAllBanners] Failed to fetch banners for ${pageKey}:`, err);
-    throw err;
+    console.warn(`[getAllBanners] Exception while fetching banners for ${pageKey}:`, err);
+    return pageKey === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : [];
   }
 }
 

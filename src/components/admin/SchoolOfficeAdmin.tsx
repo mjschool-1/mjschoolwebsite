@@ -13,6 +13,8 @@ import {
   createNotice,
   updateNotice,
   deleteNotice,
+  BANNER_PAGE_CATEGORIES,
+  BannerPageCategory,
 } from '../../lib/supabase';
 import {
   Image as ImageIcon,
@@ -73,6 +75,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   // Banners multi-banner data state
+  const [selectedBannerCategory, setSelectedBannerCategory] = useState<string>('homepage');
   const [bannersList, setBannersList] = useState<SiteBannerRecord[]>([DEFAULT_HOMEPAGE_BANNER]);
   const [isEditingBanner, setIsEditingBanner] = useState<boolean>(false);
   const [editingBanner, setEditingBanner] = useState<SiteBannerRecord | null>(null);
@@ -119,6 +122,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const isSigningInRef = useRef<boolean>(false);
 
   const config = getSupabaseConfig();
+  const currentCategory = BANNER_PAGE_CATEGORIES.find((c) => c.key === selectedBannerCategory) || BANNER_PAGE_CATEGORIES[0];
 
   // Validate active session & enforce database-backed administrator authorization
   useEffect(() => {
@@ -229,18 +233,32 @@ export const SchoolOfficeAdmin: React.FC = () => {
     }
   }, []);
 
-  // Fetch all banners (published & drafts) when authenticated
-  const loadBanners = async () => {
+  // Fetch all banners (published & drafts) for active category when authenticated
+  const loadBanners = async (categoryKey?: string) => {
+    const cat = categoryKey || selectedBannerCategory;
     setBannersLoading(true);
     try {
-      const data = await getAllBanners('homepage');
+      const data = await getAllBanners(cat);
       setBannersList(data);
     } catch (err) {
-      console.error('Failed to load banner list:', err);
-      setBannersList([DEFAULT_HOMEPAGE_BANNER]);
+      console.error('Failed to load banner list for ' + cat + ':', err);
+      setBannersList(cat === 'homepage' ? [DEFAULT_HOMEPAGE_BANNER] : []);
     } finally {
       setBannersLoading(false);
     }
+  };
+
+  const handleSelectCategory = (catKey: string) => {
+    if (catKey === selectedBannerCategory) return;
+    if (isEditingBanner) {
+      const confirmed = window.confirm(
+        'You have unsaved changes in the banner editor. Discard changes and switch category?'
+      );
+      if (!confirmed) return;
+      handleDiscardChanges();
+    }
+    setSelectedBannerCategory(catKey);
+    setSaveBannerMessage(null);
   };
 
   // Fetch all notices when authenticated
@@ -258,10 +276,10 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      loadBanners();
+      loadBanners(selectedBannerCategory);
       loadNotices();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedBannerCategory]);
 
   const handleOpenCreateNotice = () => {
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
@@ -546,8 +564,9 @@ export const SchoolOfficeAdmin: React.FC = () => {
   };
 
   const handleOpenAddBanner = () => {
+    const currentCat = BANNER_PAGE_CATEGORIES.find((c) => c.key === selectedBannerCategory);
     setEditingBanner(null);
-    setBannerTitle('Campus Announcement');
+    setBannerTitle(currentCat ? `${currentCat.name} Hero Banner` : 'Campus Announcement');
     setBannerIsPublished(true);
     clearDesktopSelection();
     clearMobileSelection();
@@ -557,7 +576,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
   const handleOpenEditBanner = (banner: SiteBannerRecord) => {
     setEditingBanner(banner);
-    setBannerTitle(banner.title || 'Homepage Hero Banner');
+    setBannerTitle(banner.title || 'Page Hero Banner');
     setBannerIsPublished(banner.is_published);
     clearDesktopSelection();
     clearMobileSelection();
@@ -568,8 +587,8 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const handleTogglePublish = async (banner: SiteBannerRecord) => {
     if (!banner.id) return;
 
-    // Safety constraint: Prevent unpublishing the last active published banner
-    if (banner.is_published) {
+    // Safety constraint: Prevent unpublishing the last active published banner on the homepage only
+    if (selectedBannerCategory === 'homepage' && banner.is_published) {
       const activeCount = bannersList.filter((b) => b.is_published).length;
       if (activeCount <= 1) {
         setSaveBannerMessage({
@@ -601,7 +620,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         type: 'success',
         text: `Banner "${banner.title || 'Untitled'}" is now ${!banner.is_published ? 'Published' : 'saved as Draft'}.`,
       });
-      await loadBanners();
+      await loadBanners(selectedBannerCategory);
     } catch (err: any) {
       setSaveBannerMessage({
         type: 'error',
@@ -613,13 +632,13 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const handleDeleteBanner = async (banner: SiteBannerRecord) => {
     if (!banner.id) return;
 
-    // Safety constraint: Prevent deletion of the final published banner
-    if (banner.is_published) {
+    // Safety constraint: Prevent deletion of the final published banner on homepage only
+    if (selectedBannerCategory === 'homepage' && banner.is_published) {
       const activeCount = bannersList.filter((b) => b.is_published).length;
       if (activeCount <= 1) {
         setSaveBannerMessage({
           type: 'error',
-          text: 'Deletion blocked: You cannot delete the only active published banner. Please publish another banner first to ensure the homepage never becomes blank.',
+          text: 'Deletion blocked: You cannot delete the only active published banner on the homepage. Please publish another banner first to ensure the homepage never becomes blank.',
         });
         setDeleteConfirmBanner(null);
         return;
@@ -641,7 +660,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         text: `Banner "${banner.title || 'Untitled'}" was deleted successfully.`,
       });
       setDeleteConfirmBanner(null);
-      await loadBanners();
+      await loadBanners(selectedBannerCategory);
     } catch (err: any) {
       setSaveBannerMessage({
         type: 'error',
@@ -763,7 +782,9 @@ export const SchoolOfficeAdmin: React.FC = () => {
       return;
     }
 
-    const titleToSave = bannerTitle.trim() || (isNew ? 'Homepage Announcement' : editingBanner?.title || 'Homepage Banner');
+    const currentCat = BANNER_PAGE_CATEGORIES.find((c) => c.key === selectedBannerCategory);
+    const catRoute = currentCat?.route || '/';
+    const titleToSave = bannerTitle.trim() || (isNew ? `${currentCat?.name || 'Page'} Hero Banner` : editingBanner?.title || 'Page Banner');
 
     setIsSavingBanner(true);
     setSaveBannerMessage(null);
@@ -785,7 +806,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
       // 1. Upload Desktop Banner if selected
       if (desktopFile) {
         const ext = desktopFile.file.name.split('.').pop() || 'png';
-        const desktopPath = `homepage-desktop-${timestamp}.${ext}`;
+        const desktopPath = `${selectedBannerCategory}-desktop-${timestamp}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('site-banners')
           .upload(desktopPath, desktopFile.file, {
@@ -807,7 +828,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
       // 2. Upload Mobile Banner if selected
       if (mobileFile) {
         const ext = mobileFile.file.name.split('.').pop() || 'png';
-        const mobilePath = `homepage-mobile-${timestamp}.${ext}`;
+        const mobilePath = `${selectedBannerCategory}-mobile-${timestamp}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('site-banners')
           .upload(mobilePath, mobileFile.file, {
@@ -832,8 +853,8 @@ export const SchoolOfficeAdmin: React.FC = () => {
         const { error: insertError } = await supabase
           .from('site_banners')
           .insert({
-            page_key: 'homepage',
-            page_path: '/',
+            page_key: selectedBannerCategory,
+            page_path: catRoute,
             title: titleToSave,
             desktop_image_path: newDesktopUrl,
             mobile_image_path: newMobileUrl,
@@ -851,22 +872,38 @@ export const SchoolOfficeAdmin: React.FC = () => {
         });
       } else {
         const hasValidUuid = Boolean(editingBanner?.id && editingBanner.id !== 'default-homepage-banner' && editingBanner.id.length > 20);
-        const query = supabase
-          .from('site_banners')
-          .update({
-            title: titleToSave,
-            desktop_image_path: newDesktopUrl,
-            mobile_image_path: newMobileUrl,
-            is_published: bannerIsPublished,
-            updated_at: new Date().toISOString(),
-            updated_by: currentUserEmail || 'Staff Admin',
-          });
+        if (hasValidUuid) {
+          const { error: updateError } = await supabase
+            .from('site_banners')
+            .update({
+              title: titleToSave,
+              desktop_image_path: newDesktopUrl,
+              mobile_image_path: newMobileUrl,
+              is_published: bannerIsPublished,
+              updated_at: new Date().toISOString(),
+              updated_by: currentUserEmail || 'Staff Admin',
+            })
+            .eq('id', editingBanner.id);
 
-        const { error: updateError } = hasValidUuid
-          ? await query.eq('id', editingBanner.id)
-          : await query.eq('page_key', 'homepage');
+          if (updateError) throw updateError;
+        } else {
+          // If editing a fallback placeholder without an existing DB record, insert it now
+          const { error: insertError } = await supabase
+            .from('site_banners')
+            .insert({
+              page_key: selectedBannerCategory,
+              page_path: catRoute,
+              title: titleToSave,
+              desktop_image_path: newDesktopUrl,
+              mobile_image_path: newMobileUrl,
+              is_published: bannerIsPublished,
+              display_order: 0,
+              updated_at: new Date().toISOString(),
+              updated_by: currentUserEmail || 'Staff Admin',
+            });
 
-        if (updateError) throw updateError;
+          if (insertError) throw insertError;
+        }
 
         setSaveBannerMessage({
           type: 'success',
@@ -878,7 +915,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
       clearMobileSelection();
       setIsEditingBanner(false);
       setEditingBanner(null);
-      await loadBanners();
+      await loadBanners(selectedBannerCategory);
     } catch (err: any) {
       console.error('[SchoolOfficeAdmin] Banner save failed:', err);
       setSaveBannerMessage({
@@ -1214,7 +1251,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   Website Banners Management
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                  Manage desktop and mobile hero banners, ordering, and publication for the MJ School homepage carousel.
+                  Manage desktop and mobile hero banners across 7 school website page categories.
                 </p>
               </div>
 
@@ -1222,7 +1259,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                 <div className="flex items-center gap-2.5 self-start sm:self-auto">
                   <button
                     type="button"
-                    onClick={loadBanners}
+                    onClick={() => loadBanners(selectedBannerCategory)}
                     disabled={bannersLoading}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
                     title="Refresh banners from Supabase"
@@ -1241,6 +1278,92 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Page Category Selector (Above configured banners list) */}
+            <div className="bg-white border border-slate-200 p-4 sm:p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#C59B27]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#0B2545]">
+                    Page Category Selector
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500">
+                  Select a category to view and manage its assigned banners
+                </span>
+              </div>
+
+              {/* 7 Page Categories Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                {BANNER_PAGE_CATEGORIES.map((cat, idx) => {
+                  const isSelected = selectedBannerCategory === cat.key;
+                  return (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      onClick={() => handleSelectCategory(cat.key)}
+                      className={`text-left p-3 border transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-[#0B2545] border-[#C59B27] text-white shadow-sm ring-1 ring-[#C59B27]'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span
+                            className={`text-[9.5px] font-mono px-1.5 py-0.5 font-bold uppercase rounded-xs ${
+                              isSelected ? 'bg-[#C59B27] text-[#0B2545]' : 'bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            Page #{idx + 1}
+                          </span>
+                          {isSelected && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-400" title="Active Category" />
+                          )}
+                        </div>
+                        <div className={`font-bold text-xs font-serif leading-tight ${
+                          isSelected ? 'text-[#F6D55C]' : 'text-[#0B2545]'
+                        }`}>
+                          {cat.name}
+                        </div>
+                      </div>
+                      <div className={`text-[10px] font-mono truncate mt-2 ${
+                        isSelected ? 'text-slate-300' : 'text-slate-500'
+                      }`}>
+                        {cat.route}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Category Route Banner Bar */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-500">Active Page:</span>
+                  <span className="font-bold text-[#0B2545]">{currentCategory.name}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-500">Route:</span>
+                  <code className="text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700 font-mono">
+                    {currentCategory.route}
+                  </code>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-slate-500 hidden md:inline">
+                    Desktop: 1920 × 640 (3:1) • Mobile: 535 × 378
+                  </span>
+                  <a
+                    href={currentCategory.route}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-[#0B2545] hover:text-[#C59B27] font-semibold underline cursor-pointer"
+                  >
+                    <span>View Live Page</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
             </div>
 
             {/* Notification alert */}
@@ -1271,197 +1394,232 @@ export const SchoolOfficeAdmin: React.FC = () => {
             {/* VIEW A: Multi-Banner Listing & Reordering */}
             {!isEditingBanner && (
               <div className="space-y-4">
-                {/* Stats & Drag Instruction Bar */}
-                <div className="p-4 bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#0B2545] uppercase tracking-wider">
-                      Configured Banners ({bannersList.length})
-                    </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="text-emerald-700 font-semibold">
-                      {bannersList.filter((b) => b.is_published).length} Published
-                    </span>
-                    <span className="text-slate-400">•</span>
-                    <span className="text-amber-700 font-semibold">
-                      {bannersList.filter((b) => !b.is_published).length} Draft
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-500 text-[11.5px]">
-                    <GripVertical className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Drag handle (:::) to reorder, or use Move Up / Down buttons. Homepage updates automatically.</span>
-                  </div>
-                </div>
-
-                {/* Banner Cards List */}
-                <div className="space-y-3">
-                  {bannersList.map((banner, index) => {
-                    const isDragged = draggedIndex === index;
-                    const isDragOver = dragOverIndex === index;
-
-                    return (
-                      <div
-                        key={banner.id || `banner-${index}`}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDragEnd={handleDragEnd}
-                        onDrop={(e) => handleDrop(e, index)}
-                        className={`bg-white border p-4 sm:p-5 transition-all duration-150 ${
-                          isDragOver
-                            ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
-                            : isDragged
-                            ? 'opacity-40 border-dashed border-[#0B2545]'
-                            : 'border-slate-200 hover:border-slate-300 shadow-xs'
-                        }`}
-                      >
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                          {/* Left: Reorder 2x3 Handle + Position + Title Info */}
-                          <div className="flex items-start sm:items-center gap-3 min-w-[280px]">
-                            {/* 2x3 Drag Handle (6 dots) */}
-                            <div
-                              className="cursor-grab active:cursor-grabbing p-1.5 text-slate-400 hover:text-[#0B2545] hover:bg-slate-100 rounded transition-colors touch-none select-none"
-                              title="Drag 6-dot handle to reorder carousel sequence"
-                              aria-label="Drag handle to reorder"
-                            >
-                              <GripVertical className="w-5 h-5 text-slate-500" />
-                            </div>
-
-                            {/* Position Badge */}
-                            <span className="px-2 py-0.5 bg-slate-100 text-[#0B2545] font-black text-xs border border-slate-200 rounded shrink-0">
-                              #{index + 1}
-                            </span>
-
-                            {/* Title & Route & Status */}
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="text-base font-bold font-serif text-[#0B2545]">
-                                  {banner.title || 'Homepage Hero Banner'}
-                                </h3>
-                                {banner.is_published ? (
-                                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
-                                    <Eye className="w-3 h-3" /> Published
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
-                                    <EyeOff className="w-3 h-3" /> Draft
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                                <span className="font-mono">Route: /</span>
-                                <span>•</span>
-                                <span>Updated: {formatDate(banner.updated_at)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Middle: Desktop and Mobile Previews */}
-                          <div className="flex items-center gap-3 shrink-0">
-                            {/* Desktop preview thumbnail */}
-                            <div className="space-y-1">
-                              <span className="block text-[10px] font-semibold text-slate-500 uppercase">
-                                Desktop (1920×640)
-                              </span>
-                              <div className="w-36 sm:w-44 aspect-[1920/640] bg-slate-900 border border-slate-200 overflow-hidden">
-                                <img
-                                  src={banner.desktop_image_path}
-                                  alt="Desktop preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Mobile preview thumbnail */}
-                            <div className="space-y-1">
-                              <span className="block text-[10px] font-semibold text-slate-500 uppercase">
-                                Mobile (535×378)
-                              </span>
-                              <div className="w-14 sm:w-16 aspect-[535/378] bg-slate-900 border border-slate-200 overflow-hidden">
-                                <img
-                                  src={banner.mobile_image_path}
-                                  alt="Mobile preview"
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right: Actions (Move, Toggle, Edit, Delete) */}
-                          <div className="flex items-center gap-1.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 flex-wrap">
-                            {/* Move Up */}
-                            <button
-                              type="button"
-                              onClick={() => handleMoveOrder(index, 'up')}
-                              disabled={index === 0 || isReordering}
-                              className="p-1.5 border border-slate-200 hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer"
-                              title="Move banner earlier in carousel sequence"
-                              aria-label="Move Up"
-                            >
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Move Down */}
-                            <button
-                              type="button"
-                              onClick={() => handleMoveOrder(index, 'down')}
-                              disabled={index === bannersList.length - 1 || isReordering}
-                              className="p-1.5 border border-slate-200 hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer"
-                              title="Move banner later in carousel sequence"
-                              aria-label="Move Down"
-                            >
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </button>
-
-                            {/* Toggle Publish / Draft */}
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePublish(banner)}
-                              className={`px-2.5 py-1.5 text-xs font-semibold border transition-colors cursor-pointer inline-flex items-center gap-1 ${
-                                banner.is_published
-                                  ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800'
-                                  : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
-                              }`}
-                              title={banner.is_published ? 'Unpublish to Draft' : 'Publish to Live Carousel'}
-                            >
-                              {banner.is_published ? (
-                                <>
-                                  <EyeOff className="w-3 h-3" />
-                                  <span>Unpublish</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-3 h-3" />
-                                  <span>Publish</span>
-                                </>
-                              )}
-                            </button>
-
-                            {/* Edit Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditBanner(banner)}
-                              className="px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase tracking-wider transition-colors inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>Edit</span>
-                            </button>
-
-                            {/* Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmBanner(banner)}
-                              className="p-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
-                              title="Delete banner"
-                              aria-label="Delete banner"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                {bannersList.length === 0 ? (
+                  /* Empty State when no banners are configured for this category */
+                  <div className="bg-white border border-slate-200 p-8 sm:p-12 text-center space-y-4">
+                    <div className="w-14 h-14 mx-auto rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-[#C59B27]">
+                      <ImageIcon className="w-7 h-7" />
+                    </div>
+                    <div className="max-w-md mx-auto space-y-1.5">
+                      <h3 className="font-serif font-bold text-lg text-[#0B2545]">
+                        No Banners Configured for {currentCategory.name}
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        This page currently displays the clean fallback institutional heading banner.
+                        Upload a 1920 × 640 desktop banner and 535 × 378 mobile banner to display a custom hero image.
+                      </p>
+                      <div className="pt-2">
+                        <span className="inline-block bg-slate-100 border border-slate-200 px-2.5 py-1 text-xs font-mono text-slate-600">
+                          Route: {currentCategory.route}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleOpenAddBanner}
+                        className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider px-5 py-2.5 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] transition-colors shadow-sm cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add First Banner for {currentCategory.name}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Stats & Drag Instruction Bar */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[#0B2545] uppercase tracking-wider">
+                          Configured Banners ({bannersList.length})
+                        </span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-emerald-700 font-semibold">
+                          {bannersList.filter((b) => b.is_published).length} Published
+                        </span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-amber-700 font-semibold">
+                          {bannersList.filter((b) => !b.is_published).length} Draft
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-500 text-[11.5px]">
+                        <GripVertical className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Drag handle (:::) to reorder, or use Move Up / Down buttons. Updates live page automatically.</span>
+                      </div>
+                    </div>
+
+                    {/* Banner Cards List */}
+                    <div className="space-y-3">
+                      {bannersList.map((banner, index) => {
+                        const isDragged = draggedIndex === index;
+                        const isDragOver = dragOverIndex === index;
+
+                        return (
+                          <div
+                            key={banner.id || `banner-${index}`}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnd={handleDragEnd}
+                            onDrop={(e) => handleDrop(e, index)}
+                            className={`bg-white border p-4 sm:p-5 transition-all duration-150 ${
+                              isDragOver
+                                ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
+                                : isDragged
+                                ? 'opacity-40 border-dashed border-[#0B2545]'
+                                : 'border-slate-200 hover:border-slate-300 shadow-xs'
+                            }`}
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                              {/* Left: Reorder 2x3 Handle + Position + Title Info */}
+                              <div className="flex items-start sm:items-center gap-3 min-w-[280px]">
+                                {/* 2x3 Drag Handle (6 dots) */}
+                                <div
+                                  className="cursor-grab active:cursor-grabbing p-1.5 text-slate-400 hover:text-[#0B2545] hover:bg-slate-100 rounded transition-colors touch-none select-none"
+                                  title="Drag 6-dot handle to reorder banner sequence"
+                                  aria-label="Drag handle to reorder"
+                                >
+                                  <GripVertical className="w-5 h-5 text-slate-500" />
+                                </div>
+
+                                {/* Position Badge */}
+                                <span className="px-2 py-0.5 bg-slate-100 text-[#0B2545] font-black text-xs border border-slate-200 rounded shrink-0">
+                                  #{index + 1}
+                                </span>
+
+                                {/* Title & Route & Status */}
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h3 className="text-base font-bold font-serif text-[#0B2545]">
+                                      {banner.title || `${currentCategory.name} Banner`}
+                                    </h3>
+                                    {banner.is_published ? (
+                                      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
+                                        <Eye className="w-3 h-3" /> Published
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm">
+                                        <EyeOff className="w-3 h-3" /> Draft
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                                    <span className="font-mono">Route: {banner.page_path || currentCategory.route}</span>
+                                    <span>•</span>
+                                    <span>Updated: {formatDate(banner.updated_at)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Middle: Desktop and Mobile Previews */}
+                              <div className="flex items-center gap-3 shrink-0">
+                                {/* Desktop preview thumbnail */}
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-semibold text-slate-500 uppercase">
+                                    Desktop (1920×640)
+                                  </span>
+                                  <div className="w-36 sm:w-44 aspect-[1920/640] bg-slate-900 border border-slate-200 overflow-hidden">
+                                    <img
+                                      src={banner.desktop_image_path}
+                                      alt="Desktop preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Mobile preview thumbnail */}
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-semibold text-slate-500 uppercase">
+                                    Mobile (535×378)
+                                  </span>
+                                  <div className="w-14 sm:w-16 aspect-[535/378] bg-slate-900 border border-slate-200 overflow-hidden">
+                                    <img
+                                      src={banner.mobile_image_path}
+                                      alt="Mobile preview"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Right: Actions (Move, Toggle, Edit, Delete) */}
+                              <div className="flex items-center gap-1.5 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 flex-wrap">
+                                {/* Move Up */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveOrder(index, 'up')}
+                                  disabled={index === 0 || isReordering}
+                                  className="p-1.5 border border-slate-200 hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer"
+                                  title="Move banner earlier in sequence"
+                                  aria-label="Move Up"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Move Down */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveOrder(index, 'down')}
+                                  disabled={index === bannersList.length - 1 || isReordering}
+                                  className="p-1.5 border border-slate-200 hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer"
+                                  title="Move banner later in sequence"
+                                  aria-label="Move Down"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Toggle Publish / Draft */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePublish(banner)}
+                                  className={`px-2.5 py-1.5 text-xs font-semibold border transition-colors cursor-pointer inline-flex items-center gap-1 ${
+                                    banner.is_published
+                                      ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800'
+                                      : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                                  }`}
+                                  title={banner.is_published ? 'Unpublish to Draft' : 'Publish to Live Page'}
+                                >
+                                  {banner.is_published ? (
+                                    <>
+                                      <EyeOff className="w-3 h-3" />
+                                      <span>Unpublish</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="w-3 h-3" />
+                                      <span>Publish</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {/* Edit Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditBanner(banner)}
+                                  className="px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold text-xs uppercase tracking-wider transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+
+                                {/* Delete Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmBanner(banner)}
+                                  className="p-1.5 border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-colors cursor-pointer"
+                                  title="Delete banner"
+                                  aria-label="Delete banner"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1482,7 +1640,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <span className="text-xs font-bold text-[#0B2545] uppercase tracking-wider">
-                      {editingBanner ? `Editing: ${editingBanner.title || 'Banner'}` : 'Adding New Homepage Banner'}
+                      {editingBanner ? `Editing: ${editingBanner.title || 'Banner'}` : `Adding New ${currentCategory.name} Banner`}
                     </span>
                   </div>
                 </div>
@@ -1775,7 +1933,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                   <p className="text-xs text-slate-600 leading-relaxed">
                     Are you sure you want to permanently delete the banner{' '}
                     <strong>"{deleteConfirmBanner.title || 'Untitled Banner'}"</strong>?
-                    This will remove it from the homepage carousel and cannot be undone.
+                    This will remove it from the {currentCategory.name} banner sequence and cannot be undone.
                   </p>
 
                   <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-3">
