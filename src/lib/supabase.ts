@@ -31,6 +31,14 @@ export interface FeeReceiptRecord {
   status: 'Confirmed' | 'Pending Clearance' | 'Failed';
 }
 
+export interface AdminUserRecord {
+  id: string;
+  email: string;
+  role: 'super_admin' | 'admin' | 'office_staff';
+  is_active: boolean;
+  created_at?: string;
+}
+
 // Safely obtain environment variables (compatible with Astro / Vite on Cloudflare)
 const supabaseUrl = (import.meta.env.PUBLIC_SUPABASE_URL || '').trim();
 const supabaseAnonKey = (import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '').trim();
@@ -98,3 +106,35 @@ export async function getPublishedBanner(pageKey: string): Promise<SiteBannerRec
     return DEFAULT_HOMEPAGE_BANNER;
   }
 }
+
+/**
+ * Verifies if an authenticated user is explicitly authorized in the admin_users table.
+ * Returns false if user is not authorized or Supabase is not configured.
+ */
+export async function verifyStaffAuthorization(userId: string): Promise<{ authorized: boolean; role?: string; error?: string }> {
+  if (!supabase || !isSupabaseConfigured() || !userId) {
+    return { authorized: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('role, is_active')
+      .eq('id', userId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) {
+      return { authorized: false, error: error.message };
+    }
+
+    if (!data) {
+      return { authorized: false, error: 'Unauthorized: Account is not registered in the school administrative directory.' };
+    }
+
+    return { authorized: true, role: data.role };
+  } catch (err: any) {
+    return { authorized: false, error: err?.message || 'Staff authorization check failed.' };
+  }
+}
+

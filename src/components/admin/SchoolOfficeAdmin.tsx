@@ -6,6 +6,7 @@ import {
   getPublishedBanner,
   DEFAULT_HOMEPAGE_BANNER,
   SiteBannerRecord,
+  verifyStaffAuthorization,
 } from '../../lib/supabase';
 import {
   Image as ImageIcon,
@@ -45,14 +46,15 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('banners');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Authentication state
+  // Authentication & Authorization state
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [authEmail, setAuthEmail] = useState<string>('');
   const [authPassword, setAuthPassword] = useState<string>('');
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-  const [isPreviewSession, setIsPreviewSession] = useState<boolean>(false);
 
   // Banners data state
   const [bannerRecord, setBannerRecord] = useState<SiteBannerRecord>(DEFAULT_HOMEPAGE_BANNER);
@@ -70,34 +72,107 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
   const config = getSupabaseConfig();
 
-  // Initialize Auth listener and check session
+  // Validate active session & enforce database-backed administrator authorization
   useEffect(() => {
-    if (supabase && isSupabaseConfigured()) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          setIsAuthenticated(true);
-          setCurrentUserEmail(session.user.email || 'Admin Staff');
-        }
-      });
+    let isMounted = true;
 
-      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
+    const validateActiveSession = async () => {
+      if (!supabase || !isSupabaseConfigured()) {
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setIsCheckingAuth(false);
+        }
+        return;
+      }
+
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session?.user) {
+          if (isMounted) {
+            setIsAuthenticated(false);
+            setCurrentUserEmail(null);
+            setCurrentUserRole(null);
+            setIsCheckingAuth(false);
+          }
+          return;
+        }
+
+        // Verify user exists in admin_users table and is active
+        const authResult = await verifyStaffAuthorization(session.user.id);
+        if (!isMounted) return;
+
+        if (authResult.authorized) {
           setIsAuthenticated(true);
           setCurrentUserEmail(session.user.email || 'Admin Staff');
-          setIsPreviewSession(false);
+          setCurrentUserRole(authResult.role || 'admin');
         } else {
+          // Valid Supabase user, but not an authorized administrator
+          await supabase?.auth.signOut();
           setIsAuthenticated(false);
           setCurrentUserEmail(null);
+          setCurrentUserRole(null);
+          setAuthError('Access Denied: Your account is authenticated, but is not authorized as an MJ School administrator.');
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setCurrentUserEmail(null);
+          setCurrentUserRole(null);
+          setAuthError(err?.message || 'Authentication error.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingAuth(false);
+        }
+      }
+    };
+
+    validateActiveSession();
+
+    if (supabase && isSupabaseConfigured()) {
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!isMounted) return;
+
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          setIsAuthenticated(false);
+          setCurrentUserEmail(null);
+          setCurrentUserRole(null);
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          const authResult = await verifyStaffAuthorization(session.user.id);
+          if (!isMounted) return;
+
+          if (authResult.authorized) {
+            setIsAuthenticated(true);
+            setCurrentUserEmail(session.user.email || 'Admin Staff');
+            setCurrentUserRole(authResult.role || 'admin');
+            setAuthError(null);
+          } else {
+            await supabase?.auth.signOut();
+            setIsAuthenticated(false);
+            setCurrentUserEmail(null);
+            setCurrentUserRole(null);
+            setAuthError('Access Denied: Your account is authenticated, but is not registered in the school administrative directory.');
+          }
+          setIsCheckingAuth(false);
         }
       });
 
       return () => {
+        isMounted = false;
         authListener.subscription.unsubscribe();
+      };
+    } else {
+      return () => {
+        isMounted = false;
       };
     }
   }, []);
 
-  // Fetch active banner data
+  // Fetch active banner data when authenticated
   const loadBanners = async () => {
     setBannersLoading(true);
     try {
@@ -111,18 +186,18 @@ export const SchoolOfficeAdmin: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated || isPreviewSession) {
+    if (isAuthenticated) {
       loadBanners();
     }
-  }, [isAuthenticated, isPreviewSession]);
+  }, [isAuthenticated]);
 
-  // Handle staff sign-in
+  // Handle staff sign-in with database authorization check
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
     if (!isSupabaseConfigured() || !supabase) {
-      setAuthError('Supabase is not configured yet. Add PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY to .env, or use Staff Preview Mode below.');
+      setAuthError('Supabase is not configured yet. Add PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_ANON_KEY to your environment variables.');
       return;
     }
 
@@ -135,9 +210,27 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
       if (error) {
         setAuthError(error.message);
-      } else if (data.user) {
-        setIsAuthenticated(true);
-        setCurrentUserEmail(data.user.email || 'Admin Staff');
+        setIsAuthenticated(false);
+        return;
+      }
+
+      if (data.user) {
+        // Enforce database-backed administrator authorization
+        const authResult = await verifyStaffAuthorization(data.user.id);
+        if (authResult.authorized) {
+          setIsAuthenticated(true);
+          setCurrentUserEmail(data.user.email || 'Admin Staff');
+          setCurrentUserRole(authResult.role || 'admin');
+          setAuthPassword(''); // Clear password from component memory
+          setAuthError(null);
+        } else {
+          // Valid user in auth.users, but not registered in admin_users
+          await supabase?.auth.signOut();
+          setIsAuthenticated(false);
+          setCurrentUserEmail(null);
+          setCurrentUserRole(null);
+          setAuthError('Access Denied: Your login credentials are valid, but your account is not authorized as an MJ School administrator.');
+        }
       }
     } catch (err: any) {
       setAuthError(err?.message || 'Authentication failed. Please verify credentials.');
@@ -151,8 +244,9 @@ export const SchoolOfficeAdmin: React.FC = () => {
       await supabase.auth.signOut();
     }
     setIsAuthenticated(false);
-    setIsPreviewSession(false);
     setCurrentUserEmail(null);
+    setCurrentUserRole(null);
+    setAuthError(null);
   };
 
   // Inspect and select desktop image
@@ -233,24 +327,12 @@ export const SchoolOfficeAdmin: React.FC = () => {
     setIsSavingBanner(true);
     setSaveBannerMessage(null);
 
-    // If Supabase is not configured, simulate in preview mode
     if (!isSupabaseConfigured() || !supabase) {
-      setTimeout(() => {
-        setBannerRecord((prev) => ({
-          ...prev,
-          desktop_image_path: desktopFile ? desktopFile.previewUrl : prev.desktop_image_path,
-          mobile_image_path: mobileFile ? mobileFile.previewUrl : prev.mobile_image_path,
-          updated_at: new Date().toISOString(),
-          updated_by: currentUserEmail || 'Staff Admin (Preview)',
-        }));
-        setSaveBannerMessage({
-          type: 'success',
-          text: 'Banner preview updated in local memory. Connect Supabase credentials in .env to persist permanently to cloud storage and database.',
-        });
-        setIsSavingBanner(false);
-        setDesktopFile(null);
-        setMobileFile(null);
-      }, 700);
+      setSaveBannerMessage({
+        type: 'error',
+        text: 'Supabase connection is required to upload assets and update published banner records.',
+      });
+      setIsSavingBanner(false);
       return;
     }
 
@@ -360,9 +442,31 @@ export const SchoolOfficeAdmin: React.FC = () => {
   };
 
   // ============================================================================
-  // Unauthenticated Staff Sign-In View
+  // 1. Initial Session Validation State (Prevents flash of protected content)
   // ============================================================================
-  if (!isAuthenticated && !isPreviewSession) {
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 sm:p-6 text-slate-100">
+        <div className="w-full max-w-sm bg-[#07172C] border border-[#C59B27]/40 p-8 flex flex-col items-center text-center shadow-2xl">
+          <div className="w-14 h-14 bg-white p-2 border border-slate-300 mb-4 flex items-center justify-center">
+            <img src="/logo.png" alt="MJ School Logo" className="w-full h-full object-contain" />
+          </div>
+          <RefreshCw className="w-6 h-6 text-[#C59B27] animate-spin mb-3" />
+          <p className="text-xs uppercase font-serif tracking-widest text-[#F6D55C] font-bold">
+            MJ School Office
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Verifying administrator session...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // 2. Unauthenticated Staff Sign-In View (Strict Supabase Auth)
+  // ============================================================================
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 sm:p-6 text-slate-100">
         <div className="w-full max-w-md bg-[#07172C] border-2 border-[#C59B27] rounded-none shadow-2xl p-6 sm:p-8">
@@ -387,13 +491,10 @@ export const SchoolOfficeAdmin: React.FC = () => {
             <div className="bg-amber-950/70 border border-amber-500/50 p-4 mb-6 text-xs text-amber-200 leading-relaxed space-y-2">
               <div className="flex items-center gap-2 font-bold text-[#F6D55C]">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-[#C59B27]" />
-                <span>Supabase Configuration Notice</span>
+                <span>Supabase Configuration Required</span>
               </div>
               <p>
-                Environment variables <code className="bg-black/40 px-1 py-0.5 rounded text-amber-300">PUBLIC_SUPABASE_URL</code> and <code className="bg-black/40 px-1 py-0.5 rounded text-amber-300">PUBLIC_SUPABASE_ANON_KEY</code> are not yet set.
-              </p>
-              <p className="text-[11px] text-slate-400">
-                You can explore the complete interface and workflows using the Staff Preview Mode below.
+                Environment variables <code className="bg-black/40 px-1 py-0.5 rounded text-amber-300">PUBLIC_SUPABASE_URL</code> and <code className="bg-black/40 px-1 py-0.5 rounded text-amber-300">PUBLIC_SUPABASE_ANON_KEY</code> must be configured in your environment to authenticate staff accounts.
               </p>
             </div>
           )}
@@ -453,20 +554,6 @@ export const SchoolOfficeAdmin: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Fallback Preview Mode Button */}
-          <div className="mt-5 pt-5 border-t border-slate-800 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsPreviewSession(true);
-                setCurrentUserEmail('staff.preview@mjschoolkalyan.edu.in');
-              }}
-              className="text-xs text-[#F6D55C] hover:text-white underline transition-colors cursor-pointer"
-            >
-              Enter Staff Preview Mode (Read/Write Sandbox) &rarr;
-            </button>
-          </div>
 
           {/* Back to public site */}
           <div className="mt-6 text-center">
@@ -599,11 +686,11 @@ export const SchoolOfficeAdmin: React.FC = () => {
             <span className="truncate block font-medium text-slate-200 mt-0.5" title={currentUserEmail || ''}>
               {currentUserEmail || 'Staff Admin'}
             </span>
-            {isPreviewSession && (
-              <span className="inline-block mt-1 bg-amber-900/60 text-[#F6D55C] text-[9.5px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                Preview Sandbox Mode
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="inline-block bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[9.5px] px-1.5 py-0.5 font-bold uppercase tracking-wider">
+                {currentUserRole === 'super_admin' ? 'Super Admin' : currentUserRole === 'office_staff' ? 'Office Staff' : 'Verified Admin'}
               </span>
-            )}
+            </div>
           </div>
 
           <div className="pt-2 flex flex-col gap-2">
