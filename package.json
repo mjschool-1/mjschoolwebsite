@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "astro build",
     "preview": "astro preview --port=3000",
     "dev:vite": "vite --port=3001 --host=0.0.0.0",
     "preview:vite": "vite preview",
     "dev:astro": "astro dev --port=3000",
     "build:astro": "astro build",
+    "build:vite": "vite build",
     "preview:astro": "astro preview",
     "clean": "rm -rf dist server.js .astro",
     "lint": "tsc --noEmit"
