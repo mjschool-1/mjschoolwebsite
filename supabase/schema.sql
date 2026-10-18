@@ -48,13 +48,63 @@ AS $$
   );
 $$;
 
--- RLS: Authenticated user can check if their own UID is an active administrator
+-- Security Definer RPC function to reliably return staff authorization status
+CREATE OR REPLACE FUNCTION public.get_staff_authorization_status()
+RETURNS TABLE (
+    is_authorized BOOLEAN,
+    role TEXT,
+    email TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+DECLARE
+    v_uid UUID := auth.uid();
+    v_jwt_email TEXT := LOWER(auth.jwt() ->> 'email');
+BEGIN
+    IF v_uid IS NULL THEN
+        RETURN QUERY SELECT false, NULL::TEXT, NULL::TEXT;
+        RETURN;
+    END IF;
+
+    -- 1. Check direct match on id (standard flow)
+    RETURN QUERY
+    SELECT true, au.role, au.email
+    FROM public.admin_users au
+    WHERE au.id = v_uid
+      AND au.is_active = true
+    LIMIT 1;
+
+    IF FOUND THEN
+        RETURN;
+    END IF;
+
+    -- 2. Fallback check: If admin_users has this verified email but id is mismatched
+    IF v_jwt_email IS NOT NULL THEN
+        RETURN QUERY
+        SELECT true, au.role, au.email
+        FROM public.admin_users au
+        WHERE LOWER(au.email) = v_jwt_email
+          AND au.is_active = true
+        LIMIT 1;
+    END IF;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_staff_authorization_status() TO authenticated;
+
+-- RLS: Authenticated user can check their own active admin authorization
 DROP POLICY IF EXISTS "Users can check their own admin status" ON public.admin_users;
 CREATE POLICY "Users can check their own admin status"
     ON public.admin_users
     FOR SELECT
     TO authenticated
-    USING (auth.uid() = id AND is_active = true);
+    USING (
+      (auth.uid() = id OR LOWER(email) = LOWER(auth.jwt() ->> 'email'))
+      AND is_active = true
+    );
 
 -- RLS: Only super_admin accounts can insert, update, or remove administrative roles
 DROP POLICY IF EXISTS "Super admins manage admin_users" ON public.admin_users;

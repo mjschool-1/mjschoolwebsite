@@ -69,6 +69,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
+  const isSigningInRef = useRef<boolean>(false);
 
   const config = getSupabaseConfig();
 
@@ -86,6 +87,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
       }
 
       try {
+        console.info('[SchoolOffice:Auth] Checking active Supabase session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error || !session?.user) {
           if (isMounted) {
@@ -97,21 +99,22 @@ export const SchoolOfficeAdmin: React.FC = () => {
           return;
         }
 
-        // Verify user exists in admin_users table and is active
-        const authResult = await verifyStaffAuthorization(session.user.id);
+        console.info('[SchoolOffice:Auth] Active session found for email:', session.user.email);
+        const authResult = await verifyStaffAuthorization(session.user.id, session.user.email);
         if (!isMounted) return;
 
         if (authResult.authorized) {
+          console.info('[SchoolOffice:Auth] Active session verified as authorized staff.');
           setIsAuthenticated(true);
           setCurrentUserEmail(session.user.email || 'Admin Staff');
           setCurrentUserRole(authResult.role || 'admin');
         } else {
-          // Valid Supabase user, but not an authorized administrator
+          console.warn('[SchoolOffice:Auth] Active session rejected by authorization check:', authResult.error);
           await supabase?.auth.signOut();
           setIsAuthenticated(false);
           setCurrentUserEmail(null);
           setCurrentUserRole(null);
-          setAuthError('Access Denied: Your account is authenticated, but is not authorized as an MJ School administrator.');
+          setAuthError(authResult.error || 'Access Denied: Your account is authenticated, but is not authorized as an MJ School administrator.');
         }
       } catch (err: any) {
         if (isMounted) {
@@ -133,6 +136,11 @@ export const SchoolOfficeAdmin: React.FC = () => {
       const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!isMounted) return;
 
+        // Skip if handleSignIn is actively processing this transition to prevent race conditions
+        if (isSigningInRef.current) {
+          return;
+        }
+
         if (event === 'SIGNED_OUT' || !session?.user) {
           setIsAuthenticated(false);
           setCurrentUserEmail(null);
@@ -142,7 +150,8 @@ export const SchoolOfficeAdmin: React.FC = () => {
         }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          const authResult = await verifyStaffAuthorization(session.user.id);
+          console.info('[SchoolOffice:Auth] onAuthStateChange event received:', event);
+          const authResult = await verifyStaffAuthorization(session.user.id, session.user.email);
           if (!isMounted) return;
 
           if (authResult.authorized) {
@@ -151,11 +160,12 @@ export const SchoolOfficeAdmin: React.FC = () => {
             setCurrentUserRole(authResult.role || 'admin');
             setAuthError(null);
           } else {
+            console.warn('[SchoolOffice:Auth] onAuthStateChange rejected user:', authResult.error);
             await supabase?.auth.signOut();
             setIsAuthenticated(false);
             setCurrentUserEmail(null);
             setCurrentUserRole(null);
-            setAuthError('Access Denied: Your account is authenticated, but is not registered in the school administrative directory.');
+            setAuthError(authResult.error || 'Access Denied: Your account is authenticated, but is not registered in the school administrative directory.');
           }
           setIsCheckingAuth(false);
         }
@@ -202,39 +212,47 @@ export const SchoolOfficeAdmin: React.FC = () => {
     }
 
     setAuthLoading(true);
+    isSigningInRef.current = true;
+
     try {
+      console.info('[SchoolOffice:SignIn] Attempting sign-in for email:', authEmail.trim().toLowerCase());
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: authEmail,
+        email: authEmail.trim(),
         password: authPassword,
       });
 
       if (error) {
+        console.warn('[SchoolOffice:SignIn] Supabase Auth returned error:', error.message);
         setAuthError(error.message);
         setIsAuthenticated(false);
         return;
       }
 
       if (data.user) {
-        // Enforce database-backed administrator authorization
-        const authResult = await verifyStaffAuthorization(data.user.id);
+        console.info('[SchoolOffice:SignIn] Supabase Auth credentials validated. Checking admin authorization...');
+        const authResult = await verifyStaffAuthorization(data.user.id, data.user.email);
+
         if (authResult.authorized) {
+          console.info('[SchoolOffice:SignIn] Authorization successful! Granted role:', authResult.role);
           setIsAuthenticated(true);
           setCurrentUserEmail(data.user.email || 'Admin Staff');
           setCurrentUserRole(authResult.role || 'admin');
           setAuthPassword(''); // Clear password from component memory
           setAuthError(null);
         } else {
-          // Valid user in auth.users, but not registered in admin_users
+          console.warn('[SchoolOffice:SignIn] Authorization denied:', authResult.error);
           await supabase?.auth.signOut();
           setIsAuthenticated(false);
           setCurrentUserEmail(null);
           setCurrentUserRole(null);
-          setAuthError('Access Denied: Your login credentials are valid, but your account is not authorized as an MJ School administrator.');
+          setAuthError(authResult.error || 'Access Denied: Your login credentials are valid, but your account is not authorized as an MJ School administrator.');
         }
       }
     } catch (err: any) {
+      console.error('[SchoolOffice:SignIn] Exception during sign-in:', err?.message);
       setAuthError(err?.message || 'Authentication failed. Please verify credentials.');
     } finally {
+      isSigningInRef.current = false;
       setAuthLoading(false);
     }
   };
