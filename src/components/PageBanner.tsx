@@ -35,11 +35,11 @@ export const PageBanner: React.FC<PageBannerProps> = ({
   const [isTabVisible, setIsTabVisible] = useState<boolean>(true);
 
   const shouldHideOverlay = Boolean(
-    hideTextOverlay || pageKey === 'infrastructure' || className?.includes('infrastructure-banner')
+    hideTextOverlay || pageKey === 'infrastructure' || pageKey === 'syllabus' || className?.includes('infrastructure-banner')
   );
 
   const shouldHideMobileOverlay = Boolean(
-    shouldHideOverlay || hideMobileOverlayOnly || pageKey === 'syllabus'
+    shouldHideOverlay || hideMobileOverlayOnly
   );
 
   // 1. Fetch published banners for this specific page key

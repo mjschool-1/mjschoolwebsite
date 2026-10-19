@@ -15,38 +15,38 @@ const breadcrumbs = [
   pageTitle="Academic Syllabus"
   pageSubtitle="Explore the subjects taught at each grade at MJ School."
   pageKey="syllabus"
-  hideMobileBannerText={true}
+  hideBannerText={true}
 >
-  {/* Mobile-only Heading Section immediately below the banner frame */}
-  <section class="block md:hidden bg-white border-b border-slate-200/80 px-4 pt-6 pb-6 text-center select-none">
-    <div class="max-w-md mx-auto space-y-2">
-      {/* 1. Breadcrumb path: centered, smaller than title, dark navy / slate text */}
-      <nav aria-label="Breadcrumb" class="mb-1">
-        <ol class="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 font-medium">
+  {/* Unified Heading Section immediately below the banner frame for Desktop, Tablet, and Mobile */}
+  <section class="bg-white border-b border-slate-200/80 px-4 py-8 sm:py-10 md:py-12 text-center select-none">
+    <div class="max-w-3xl mx-auto space-y-3 sm:space-y-3.5">
+      {/* 1. Breadcrumb path: centered, smaller and less prominent than title, dark navy / slate text */}
+      <nav aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-500 font-medium">
           <li>
-            <a href="/" class="hover:text-[#0B2545] transition-colors">Home</a>
+            <a href="/" class="hover:text-[#0B2545] text-slate-500 transition-colors">Home</a>
           </li>
-          <li class="flex items-center gap-1.5">
+          <li class="flex items-center gap-1.5 sm:gap-2">
             <span class="text-[#C59B27] font-bold">→</span>
-            <a href="/academics/syllabus/" class="hover:text-[#0B2545] transition-colors">Academics</a>
+            <a href="/academics/syllabus/" class="hover:text-[#0B2545] text-slate-600 transition-colors">Academics</a>
           </li>
-          <li class="flex items-center gap-1.5">
+          <li class="flex items-center gap-1.5 sm:gap-2">
             <span class="text-[#C59B27] font-bold">→</span>
             <span class="text-[#0B2545] font-semibold">Academic Syllabus</span>
           </li>
         </ol>
       </nav>
 
-      {/* 2. Page Title: Prominent, readable, appropriately sized for mobile */}
-      <h1 class="text-2xl font-extrabold font-serif tracking-tight text-[#0B2545] leading-tight">
+      {/* 2. Page Title: Bold, elegant, visually prominent in dark navy blue */}
+      <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold font-serif tracking-tight text-[#0B2545] leading-tight">
         Academic Syllabus
       </h1>
 
       {/* Subtle brand accent separator */}
-      <div class="w-10 h-1 bg-[#C59B27] rounded-full mx-auto my-1.5" aria-hidden="true" />
+      <div class="w-12 h-1 bg-[#C59B27] rounded-full mx-auto my-2" aria-hidden="true" />
 
-      {/* 3. Subtitle: Comfortable line spacing and enough room to wrap naturally */}
-      <p class="text-xs text-slate-600 leading-relaxed font-normal max-w-sm mx-auto">
+      {/* 3. Subtitle: Readable with comfortable line spacing in dark text */}
+      <p class="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed font-normal max-w-xl mx-auto">
         Explore the subjects taught at each grade at MJ School.
       </p>
     </div>
