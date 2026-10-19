@@ -127,7 +127,7 @@ export const HERO_SLIDES = [
   {
     id: 1,
     title: 'Nurturing Lifelong Learners, Shaping Future Leaders',
-    subtitle: 'Inspired by the high academic legacy of Kalyan, offering world-class CBSE education with modern values and state-of-the-art facilities.',
+    subtitle: 'Offering world-class CBSE education in Shahapur with modern values and state-of-the-art facilities.',
     tag: 'Admissions Open 2025-26',
     ctaText: 'Apply for Admission',
     ctaHref: '#admissions',

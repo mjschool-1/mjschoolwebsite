@@ -17,6 +17,7 @@ interface PageBannerProps {
   breadcrumbs?: BreadcrumbItem[];
   className?: string;
   hideTextOverlay?: boolean;
+  hideMobileOverlayOnly?: boolean;
 }
 
 export const PageBanner: React.FC<PageBannerProps> = ({
@@ -26,6 +27,7 @@ export const PageBanner: React.FC<PageBannerProps> = ({
   breadcrumbs,
   className,
   hideTextOverlay,
+  hideMobileOverlayOnly,
 }) => {
   const [banners, setBanners] = useState<SiteBannerRecord[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
@@ -34,6 +36,10 @@ export const PageBanner: React.FC<PageBannerProps> = ({
 
   const shouldHideOverlay = Boolean(
     hideTextOverlay || pageKey === 'infrastructure' || className?.includes('infrastructure-banner')
+  );
+
+  const shouldHideMobileOverlay = Boolean(
+    shouldHideOverlay || hideMobileOverlayOnly || pageKey === 'syllabus'
   );
 
   // 1. Fetch published banners for this specific page key
@@ -101,6 +107,52 @@ export const PageBanner: React.FC<PageBannerProps> = ({
               className="w-full h-full object-cover block"
             />
           </div>
+        </div>
+      );
+    }
+
+    if (shouldHideMobileOverlay) {
+      return (
+        <div className={`relative w-full select-none ${className || ''}`}>
+          {/* Desktop Banner: Preserved heading & breadcrumbs overlay */}
+          <div className="hidden md:block bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              {breadcrumbs && breadcrumbs.length > 0 && (
+                <nav aria-label="Breadcrumb" className="mb-3">
+                  <ol className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                    <li>
+                      <a href="/" className="hover:text-[#F6D55C] transition-colors flex items-center gap-1">
+                        <span>Home</span>
+                      </a>
+                    </li>
+                    {breadcrumbs.map((crumb, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span className="text-slate-500 font-bold">→</span>
+                        {crumb.href ? (
+                          <a href={crumb.href} className="hover:text-[#F6D55C] transition-colors">
+                            {crumb.label}
+                          </a>
+                        ) : (
+                          <span className="text-[#F6D55C] font-semibold">{crumb.label}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </nav>
+              )}
+              <h1 className="text-2xl sm:text-4xl font-extrabold font-serif tracking-tight text-white drop-shadow-sm">
+                {pageTitle}
+              </h1>
+              {pageSubtitle && (
+                <p className="mt-2 text-xs sm:text-sm text-slate-200 max-w-3xl leading-relaxed">
+                  {pageSubtitle}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Banner: Clear frame with exact proportions 535 × 378, reserved for future image upload */}
+          <div className="block md:hidden w-full aspect-[535/378] relative overflow-hidden bg-[#07172C] border-b-4 border-[#C59B27]" />
         </div>
       );
     }
@@ -220,8 +272,8 @@ export const PageBanner: React.FC<PageBannerProps> = ({
           loading="eager"
         />
 
-        {/* Contrast Gradient Overlay for Mobile: Omitted when shouldHideOverlay is true */}
-        {!shouldHideOverlay && (
+        {/* Contrast Gradient Overlay for Mobile: Omitted when shouldHideMobileOverlay is true */}
+        {!shouldHideMobileOverlay && (
           <div className="absolute inset-0 bg-gradient-to-t from-[#07172C]/95 via-[#0B2545]/75 to-[#07172C]/30 flex flex-col justify-end p-4 sm:p-5">
             {breadcrumbs && breadcrumbs.length > 0 && (
               <nav aria-label="Breadcrumb" className="mb-1.5">

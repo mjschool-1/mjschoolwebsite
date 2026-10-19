@@ -1357,7 +1357,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
                 required
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
-                placeholder="staff@mjschoolkalyan.edu.in"
+                placeholder="staff@mjschool.in"
                 className="w-full bg-slate-800/80 border border-slate-700 focus:border-[#C59B27] px-3.5 py-2.5 text-sm text-white outline-none transition-colors placeholder:text-slate-500"
               />
             </div>

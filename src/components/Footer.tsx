@@ -1,44 +1,24 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Logo } from './Logo';
-import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 interface FooterProps {
   onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
-  const [emailSub, setEmailSub] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleNav = (target: 'fee-structure' | 'about-school') => {
-    if (onSelectNav) {
-      onSelectNav(target);
-    } else {
-      const el = document.getElementById(target);
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (emailSub) {
-      setSubscribed(true);
-      setEmailSub('');
-    }
-  };
-
   return (
     <footer id="contact" className="bg-[#07172C] text-slate-300 text-xs border-t-4 border-[#C59B27]">
-      {/* Upper Footer: 4 Columns */}
+      {/* Upper Footer: 3 Columns cleanly balanced on desktop and stacked on mobile */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-10">
           
-          {/* Col 1: Identity & Crest (No Kalyan box in Logo) */}
-          <div className="lg:col-span-4 space-y-4">
+          {/* Col 1: Identity & Crest */}
+          <div className="lg:col-span-5 space-y-4">
             <div className="bg-white/95 p-3 rounded-xl inline-block shadow-md">
               <Logo size="md" variant="full" />
             </div>
-            <p className="text-slate-400 text-xs leading-relaxed">
+            <p className="text-slate-400 text-xs leading-relaxed max-w-md">
               MJ School is an esteemed English Medium Co-educational institution affiliated with the Central Board of Secondary Education (CBSE). Committed to holistic academic excellence, moral integrity, and modern pedagogical rigor.
             </p>
           </div>
@@ -48,7 +28,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
             <h4 className="text-white text-sm font-bold uppercase tracking-wider font-serif border-b border-slate-700 pb-2">
               Quick Portals
             </h4>
-            <ul className="space-y-2 text-xs">
+            <ul className="space-y-2.5 text-xs">
               <li>
                 <a
                   href="/about/principals-message/"
@@ -82,70 +62,43 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
             </ul>
           </div>
 
-          {/* Col 3: Contact & Campus Location */}
-          <div className="lg:col-span-3 space-y-3">
+          {/* Col 3: Campus Contact */}
+          <div className="lg:col-span-4 space-y-3">
             <h4 className="text-white text-sm font-bold uppercase tracking-wider font-serif border-b border-slate-700 pb-2">
               Campus Contact
             </h4>
-            <div className="space-y-2.5 text-xs text-slate-300">
+            <div className="space-y-3 text-xs text-slate-300">
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#F6D55C] shrink-0 mt-0.5" />
-                <span>
-                  MJ School Campus, Near Birla College Road, Kalyan (West), District Thane, Maharashtra – 421301.
+                <span className="leading-relaxed">
+                  Manas Tulsi Valley, Tambadmal Road, Shahapur, Maharashtra 421601
                 </span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#F6D55C] shrink-0" />
-                <span>+91 251 2230001 / 2230002</span>
+                <a
+                  href="tel:+918652270204"
+                  className="hover:text-[#F6D55C] transition-colors"
+                >
+                  +91 86522 70204
+                </a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#F6D55C] shrink-0" />
-                <span>info@mjschoolkalyan.edu.in</span>
+                <a
+                  href="mailto:admin@mjschool.in"
+                  className="hover:text-[#F6D55C] transition-colors"
+                >
+                  admin@mjschool.in
+                </a>
               </div>
-              <div className="flex items-start gap-2.5">
+              <div className="flex items-start gap-2.5 pt-1">
                 <Clock className="w-4 h-4 text-[#F6D55C] shrink-0 mt-0.5" />
                 <div>
-                  <p>School Office Hours:</p>
-                  <p className="text-[11px] text-slate-400">Monday to Saturday: 08:30 AM – 03:30 PM</p>
+                  <p className="font-semibold text-slate-200">School Office Hours:</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Monday to Saturday, 9:30 AM – 3:00 PM</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Col 4: Newsletter & Emergency Help */}
-          <div className="lg:col-span-2 space-y-3">
-            <h4 className="text-white text-sm font-bold uppercase tracking-wider font-serif border-b border-slate-700 pb-2">
-              Stay Connected
-            </h4>
-            <p className="text-[11px] text-slate-400">
-              Subscribe for circulars, exam dates, and admission announcements.
-            </p>
-            {subscribed ? (
-              <p className="text-xs text-emerald-400 font-semibold bg-emerald-950/60 p-2 rounded border border-emerald-800">
-                Subscribed successfully!
-              </p>
-            ) : (
-              <form onSubmit={handleSubscribe} className="space-y-1.5">
-                <input
-                  type="email"
-                  required
-                  placeholder="Enter email address"
-                  value={emailSub}
-                  onChange={(e) => setEmailSub(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs text-white placeholder-slate-500 outline-none focus:border-[#C59B27]"
-                />
-                <button
-                  type="submit"
-                  className="w-full bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold py-1.5 px-3 rounded text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Send className="w-3 h-3" />
-                  <span>Subscribe</span>
-                </button>
-              </form>
-            )}
-            <div className="pt-2 text-[10px] text-slate-400">
-              Student Helpline: <br />
-              <strong className="text-white text-xs">+91 251 2230009</strong>
             </div>
           </div>
 
@@ -156,7 +109,7 @@ export const Footer: React.FC<FooterProps> = ({ onSelectNav }) => {
       <div className="bg-[#040D1A] py-4 border-t border-slate-800 text-[11px] text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
           <p>
-            © {new Date().getFullYear()} MJ School, Kalyan. All Rights Reserved. Affiliated to CBSE.
+            © 2026 MJ School, Shahapur. All Rights Reserved. Affiliated to CBSE.
           </p>
           <div className="flex items-center gap-4">
             <a href="/privacy-policy/" className="hover:text-slate-300">Privacy Policy</a>

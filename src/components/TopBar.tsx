@@ -20,14 +20,20 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenFee }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-3">
         {/* Only Mobile Number & Email */}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-          <div className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors">
+          <a
+            href="tel:+918652270204"
+            className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
+          >
             <Phone className="w-3.5 h-3.5 text-[#F6D55C]" />
-            <span>+91 251 2230001 / 2230002</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors">
+            <span>+91 86522 70204</span>
+          </a>
+          <a
+            href="mailto:admin@mjschool.in"
+            className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
+          >
             <Mail className="w-3.5 h-3.5 text-[#F6D55C]" />
-            <span>info@mjschoolkalyan.edu.in</span>
-          </div>
+            <span>admin@mjschool.in</span>
+          </a>
         </div>
 
         {/* Only Pay Fees Online Button (Desktop only; on mobile it is in Navbar action bar) */}

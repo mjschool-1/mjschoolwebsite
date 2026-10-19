@@ -9,14 +9,50 @@ const breadcrumbs = [
 ---
 
 <PublicLayout
-  title="Academic Syllabus | MJ School Shahpur"
-  description="Explore the subjects taught at each grade at MJ School, Shahpur."
+  title="Academic Syllabus | MJ School Shahapur"
+  description="Explore the subjects taught at each grade at MJ School, Shahapur."
   breadcrumbs={breadcrumbs}
   pageTitle="Academic Syllabus"
   pageSubtitle="Explore the subjects taught at each grade at MJ School."
   pageKey="syllabus"
+  hideMobileBannerText={true}
 >
-  <div class="py-12 bg-white">
+  {/* Mobile-only Heading Section immediately below the banner frame */}
+  <section class="block md:hidden bg-white border-b border-slate-200/80 px-4 pt-6 pb-6 text-center select-none">
+    <div class="max-w-md mx-auto space-y-2">
+      {/* 1. Breadcrumb path: centered, smaller than title, dark navy / slate text */}
+      <nav aria-label="Breadcrumb" class="mb-1">
+        <ol class="flex flex-wrap items-center justify-center gap-1.5 text-xs text-slate-500 font-medium">
+          <li>
+            <a href="/" class="hover:text-[#0B2545] transition-colors">Home</a>
+          </li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-[#C59B27] font-bold">→</span>
+            <a href="/academics/syllabus/" class="hover:text-[#0B2545] transition-colors">Academics</a>
+          </li>
+          <li class="flex items-center gap-1.5">
+            <span class="text-[#C59B27] font-bold">→</span>
+            <span class="text-[#0B2545] font-semibold">Academic Syllabus</span>
+          </li>
+        </ol>
+      </nav>
+
+      {/* 2. Page Title: Prominent, readable, appropriately sized for mobile */}
+      <h1 class="text-2xl font-extrabold font-serif tracking-tight text-[#0B2545] leading-tight">
+        Academic Syllabus
+      </h1>
+
+      {/* Subtle brand accent separator */}
+      <div class="w-10 h-1 bg-[#C59B27] rounded-full mx-auto my-1.5" aria-hidden="true" />
+
+      {/* 3. Subtitle: Comfortable line spacing and enough room to wrap naturally */}
+      <p class="text-xs text-slate-600 leading-relaxed font-normal max-w-sm mx-auto">
+        Explore the subjects taught at each grade at MJ School.
+      </p>
+    </div>
+  </section>
+
+  <div class="py-8 sm:py-12 md:py-16 bg-[#F8FAFC]">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
       {/* Grade-wise Academic Syllabus Table */}

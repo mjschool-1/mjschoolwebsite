@@ -19,18 +19,20 @@ interface Props {
   pageKey?: string;
   bannerClass?: string;
   hideBannerText?: boolean;
+  hideMobileBannerText?: boolean;
   hideHeaderAlerts?: boolean;
 }
 
 const {
-  title = "MJ School - Shahpur | Affiliated to CBSE",
-  description = "Official website for MJ School, Shahpur. Premier co-educational CBSE institution.",
+  title = "MJ School - Shahapur | Affiliated to CBSE",
+  description = "Official website for MJ School, Shahapur. Premier co-educational CBSE institution.",
   breadcrumbs,
   pageTitle,
   pageSubtitle,
   pageKey,
   bannerClass,
   hideBannerText,
+  hideMobileBannerText,
   hideHeaderAlerts,
 } = Astro.props;
 
@@ -54,6 +56,7 @@ const currentPath = Astro.url.pathname;
       breadcrumbs={breadcrumbs}
       className={bannerClass}
       hideTextOverlay={hideBannerText}
+      hideMobileOverlayOnly={hideMobileBannerText}
     />
   ) : pageTitle ? (
     <div class="bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner">
