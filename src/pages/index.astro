@@ -3,6 +3,15 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 import { HeroSlider, FlashNews } from '../components/HeroSlider';
 import { AboutSchoolSection } from '../components/AboutSchoolSection';
 import { NoticeBoardAndEvents } from '../components/NoticeBoardAndEvents';
+import { getGalleryItemsBySection } from '../lib/supabase';
+
+let infraItem = null;
+try {
+  const infraItems = await getGalleryItemsBySection('infrastructure');
+  infraItem = infraItems && infraItems.length > 0 ? infraItems[0] : null;
+} catch (e) {
+  console.warn('[index.astro] Error prefetching infrastructure image:', e);
+}
 ---
 
 <PublicLayout title="MJ School - Shahpur | Affiliated to CBSE" hideHeaderAlerts={true}>
@@ -15,7 +24,12 @@ import { NoticeBoardAndEvents } from '../components/NoticeBoardAndEvents';
   <FlashNews client:idle />
 
   {/* 3. About School Section */}
-  <AboutSchoolSection />
+  <AboutSchoolSection
+    client:load
+    initialInfraImageUrl={infraItem?.image_url || null}
+    initialInfraTitle={infraItem?.title || 'CAMPUS INFRASTRUCTURE'}
+    initialInfraShowTitle={infraItem?.show_title !== false}
+  />
 
   {/* Circulars, Notices & Student Hall of Fame */}
   <NoticeBoardAndEvents client:visible />

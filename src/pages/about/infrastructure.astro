@@ -1,11 +1,20 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
 import { CampusInfrastructureFrame } from '../../components/CampusInfrastructureFrame';
+import { getGalleryItemsBySection } from '../../lib/supabase';
 
 const breadcrumbs = [
   { label: 'About Us', href: '/about/principals-message/' },
   { label: 'Infrastructure' },
 ];
+
+let infraItem = null;
+try {
+  const infraItems = await getGalleryItemsBySection('infrastructure');
+  infraItem = infraItems && infraItems.length > 0 ? infraItems[0] : null;
+} catch (e) {
+  console.warn('[infrastructure.astro] Error prefetching infrastructure image:', e);
+}
 ---
 
 <PublicLayout
@@ -55,7 +64,12 @@ const breadcrumbs = [
       </div>
 
       {/* Campus Infrastructure Image Frame: 1536 × 1024 (Aspect Ratio 3:2) */}
-      <CampusInfrastructureFrame client:load />
+      <CampusInfrastructureFrame
+        client:load
+        initialImageUrl={infraItem?.image_url || null}
+        initialTitle={infraItem?.title || 'CAMPUS INFRASTRUCTURE'}
+        initialShowTitle={infraItem?.show_title !== false}
+      />
 
     </div>
   </div>

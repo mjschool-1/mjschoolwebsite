@@ -786,6 +786,23 @@ export const SchoolOfficeAdmin: React.FC = () => {
         show_title: infraShowTitle,
       });
       setInfraSelectedFile(null);
+
+      // Trigger instant synchronization across all open views and tabs
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('mj_infrastructure_updated', {
+            detail: {
+              imageUrl: persistentUrl,
+              title: finalTitle,
+              showTitle: infraShowTitle,
+            },
+          })
+        );
+        try {
+          localStorage.setItem('mj_infra_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+
       setInfraMessage({
         type: 'success',
         text: `Campus Infrastructure image and settings saved! Title: ${infraShowTitle ? 'Visible' : 'Hidden'}.`,
@@ -827,6 +844,23 @@ export const SchoolOfficeAdmin: React.FC = () => {
 
       setInfraItem((prev) => (prev ? { ...prev, image_url: null } : null));
       setInfraSelectedFile(null);
+
+      // Trigger instant synchronization across all open views and tabs
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('mj_infrastructure_updated', {
+            detail: {
+              imageUrl: null,
+              title: finalTitle,
+              showTitle: infraShowTitle,
+            },
+          })
+        );
+        try {
+          localStorage.setItem('mj_infra_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+
       setInfraMessage({
         type: 'success',
         text: 'Campus infrastructure image removed. Frame now displays default placeholder.',

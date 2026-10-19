@@ -1,7 +1,18 @@
 import React from 'react';
 import { Quote, User } from 'lucide-react';
+import { CampusInfrastructureFrame } from './CampusInfrastructureFrame';
 
-export const AboutSchoolSection: React.FC = () => {
+export interface AboutSchoolSectionProps {
+  initialInfraImageUrl?: string | null;
+  initialInfraTitle?: string;
+  initialInfraShowTitle?: boolean;
+}
+
+export const AboutSchoolSection: React.FC<AboutSchoolSectionProps> = ({
+  initialInfraImageUrl = null,
+  initialInfraTitle = 'CAMPUS INFRASTRUCTURE',
+  initialInfraShowTitle = true,
+}) => {
   return (
     <section id="about-school" className="py-8 sm:py-10 bg-white border-b border-slate-200 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -31,15 +42,14 @@ export const AboutSchoolSection: React.FC = () => {
             </p>
           </div>
 
-          {/* School Campus Visual Placeholder */}
-          <div className="lg:col-span-5 relative">
-            <div className="relative rounded-2xl overflow-hidden shadow-sm border-2 border-slate-200 bg-slate-100 h-72 sm:h-80 flex flex-col justify-end p-5">
-              <div>
-                <span className="inline-block bg-[#0B2545] text-[#F6D55C] text-xs font-bold uppercase tracking-wider px-3 py-1 rounded">
-                  CAMPUS INFRASTRUCTURE
-                </span>
-              </div>
-            </div>
+          {/* School Campus Visual Synchronized with Campus Infrastructure Settings */}
+          <div className="lg:col-span-5 relative self-stretch flex items-stretch">
+            <CampusInfrastructureFrame
+              variant="philosophy"
+              initialImageUrl={initialInfraImageUrl}
+              initialTitle={initialInfraTitle}
+              initialShowTitle={initialInfraShowTitle}
+            />
           </div>
 
         </div>
