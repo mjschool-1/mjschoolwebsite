@@ -1,174 +1,68 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { Calendar, Trophy, Sparkles, Flag, Music, Users } from 'lucide-react';
+import { Calendar, Sparkles } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'Academics', href: '/academics/syllabus/' },
   { label: 'Events & Activities' },
 ];
-
-const flagshipEvents = [
-  {
-    title: 'Inter-House Annual Athletic Championship',
-    timeframe: 'October / November',
-    venue: 'Main Sports Complex',
-    desc: 'Two days of high-energy track and field competitions, march-past drills, relay races, and championship trophy presentations.',
-  },
-  {
-    title: 'Annual Science & Tech Expo "TechnoSpark"',
-    timeframe: 'November',
-    venue: 'Multipurpose Auditorium & Labs',
-    desc: 'Students exhibit working robotic prototypes, AI models, green energy inventions, and mathematical visual models before expert judges.',
-  },
-  {
-    title: 'Inter-School Cultural Fest "SPARK"',
-    timeframe: 'December',
-    venue: 'Open-Air Amphitheatre',
-    desc: 'A grand celebration of performing arts, classical Indian dance, choral music, theatrical drama, and literary debates.',
-  },
-  {
-    title: 'Parent-Teacher Interaction Meet (PTM)',
-    timeframe: 'Quarterly',
-    venue: 'Respective Classrooms',
-    desc: 'Collaborative one-on-one dialogues between parents and educators reviewing academic growth and behavioral milestones.',
-  },
-];
-
-const clubs = [
-  {
-    name: 'Robotics & STEM Club',
-    desc: 'Hands-on programming with microcontrollers, sensor integration, drone basics, and regional competition preparation.',
-    badge: 'Technology',
-  },
-  {
-    name: 'Literary & Debating Society',
-    desc: 'Nurturing articulation, persuasive speech, Model United Nations (MUN) simulations, and creative writing.',
-    badge: 'Humanities',
-  },
-  {
-    name: 'Eco-Warriors & Nature Club',
-    desc: 'Campus tree plantation, organic composting, waste segregation workshops, and biodiversity mapping.',
-    badge: 'Environment',
-  },
-  {
-    name: 'Performing Arts & Choir',
-    desc: 'Vocal music training in classical ragas and world harmonies, instrumental mastery, and theatrical productions.',
-    badge: 'Arts',
-  },
-  {
-    name: 'Heritage & Social Service (SUPW)',
-    desc: 'Visits to historical monuments, community literacy drives, and social empathy outreach projects.',
-    badge: 'Social Impact',
-  },
-];
 ---
 
 <PublicLayout
-  title="Events & Activities | MJ School Shahpur"
-  description="Discover the vibrant co-curricular clubs, annual festivals, house competitions, and events at MJ School, Shahpur."
+  title="Events & Activities | MJ School Shahapur"
+  description="Discover upcoming events, annual celebrations, and co-curricular activities at MJ School, Shahapur."
   breadcrumbs={breadcrumbs}
   pageTitle="Events & Co-Curricular Activities"
-  pageSubtitle="Instilling leadership, sportsmanship, and creative expression through dynamic clubs and celebrated annual events."
+  pageSubtitle="Fostering leadership, sportsmanship, and creative expression through student activities and school celebrations."
   pageKey="events_activities"
 >
-  <div class="py-12 bg-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="py-10 sm:py-14 md:py-16 bg-[#F8FAFC]">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      {/* Flagship Events Section */}
-      <div class="mb-14">
-        <div class="flex items-center gap-2 mb-6">
-          <Calendar class="w-5 h-5 text-[#C59B27]" />
-          <h2 class="text-xl font-bold font-serif text-[#0B2545]">
-            Annual Flagship Celebrations
+      {/* General Co-Curricular Overview */}
+      <div class="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 mb-8 text-center sm:text-left shadow-xs">
+        <div class="max-w-3xl">
+          <div class="flex items-center gap-2 mb-2.5 justify-center sm:justify-start">
+            <Sparkles class="w-4 h-4 text-[#C59B27]" />
+            <span class="text-xs font-bold uppercase tracking-wider text-[#C59B27]">Co-Curricular Life at MJ School</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] mb-2.5">
+            Nurturing Talents Beyond the Classroom
           </h2>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {flagshipEvents.map((evt) => (
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all">
-              <div class="flex items-center justify-between gap-2 mb-2">
-                <span class="text-[10px] uppercase font-bold text-[#C59B27] bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  {evt.timeframe}
-                </span>
-                <span class="text-[11px] text-slate-500 font-medium">
-                  {evt.venue}
-                </span>
-              </div>
-              <h3 class="font-bold text-base text-[#0B2545] font-serif mb-2">
-                {evt.title}
-              </h3>
-              <p class="text-xs text-slate-600 leading-relaxed">
-                {evt.desc}
-              </p>
-            </div>
-          ))}
+          <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            At MJ School, co-curricular learning, sportsmanship, and creative expression are integral pillars of a well-rounded educational journey. We provide students with avenues to explore their interests, develop leadership capabilities, and collaborate with peers through school-wide activities.
+          </p>
         </div>
       </div>
 
-      {/* House System Spotlight */}
-      <div class="bg-gradient-to-r from-[#0B2545] to-[#133E6E] text-white rounded-2xl p-6 sm:p-8 mb-14 shadow-lg">
-        <div class="flex items-center gap-2 mb-4">
-          <Flag class="w-5 h-5 text-[#F6D55C]" />
-          <h3 class="text-lg font-bold font-serif">
-            The MJ School Four-House System
-          </h3>
+      {/* Verified Events & Activities State: Professional Empty State */}
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-8 sm:p-14 text-center shadow-xs">
+        <div class="w-16 h-16 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-center justify-center mx-auto mb-5 text-[#C59B27] shadow-2xs">
+          <Calendar class="w-8 h-8 text-[#C59B27]" />
         </div>
-        <p class="text-xs text-slate-200 leading-relaxed max-w-3xl mb-6">
-          Every student and faculty member is initiated into one of our four legendary Houses, fostering healthy camaraderie, leadership accountability, and team pride in athletic, literary, and cultural events.
+
+        <h3 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] mb-2 sm:mb-3">
+          No Events to Display
+        </h3>
+
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md mx-auto mb-6">
+          Event announcements and updates will be published here when available. Please check back for the latest school activities.
         </p>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="bg-white/10 rounded-xl p-4 border border-white/20 text-center">
-            <span class="w-4 h-4 rounded-full bg-blue-500 inline-block mb-1"></span>
-            <h4 class="font-bold text-sm text-white">Prithvi House</h4>
-            <p class="text-[11px] text-slate-300">Resilience &amp; Loyalty</p>
-          </div>
-          <div class="bg-white/10 rounded-xl p-4 border border-white/20 text-center">
-            <span class="w-4 h-4 rounded-full bg-amber-400 inline-block mb-1"></span>
-            <h4 class="font-bold text-sm text-white">Surya House</h4>
-            <p class="text-[11px] text-slate-300">Wisdom &amp; Brilliance</p>
-          </div>
-          <div class="bg-white/10 rounded-xl p-4 border border-white/20 text-center">
-            <span class="w-4 h-4 rounded-full bg-emerald-500 inline-block mb-1"></span>
-            <h4 class="font-bold text-sm text-white">Vayu House</h4>
-            <p class="text-[11px] text-slate-300">Speed &amp; Agility</p>
-          </div>
-          <div class="bg-white/10 rounded-xl p-4 border border-white/20 text-center">
-            <span class="w-4 h-4 rounded-full bg-rose-500 inline-block mb-1"></span>
-            <h4 class="font-bold text-sm text-white">Agni House</h4>
-            <p class="text-[11px] text-slate-300">Passion &amp; Courage</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Activity Clubs Grid */}
-      <div>
-        <div class="flex items-center gap-2 mb-6">
-          <Users class="w-5 h-5 text-[#C59B27]" />
-          <h2 class="text-xl font-bold font-serif text-[#0B2545]">
-            Student Clubs &amp; Interest Circles
-          </h2>
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-500 font-medium">
+          <span class="w-2 h-2 rounded-full bg-[#C59B27] shrink-0 animate-pulse"></span>
+          <span>Official schedules and announcements will be posted here</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clubs.map((club) => (
-            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-              <div>
-                <div class="flex items-center justify-between gap-2 mb-2">
-                  <span class="text-[10px] font-bold uppercase text-[#0B2545] bg-slate-100 px-2 py-0.5 rounded">
-                    {club.badge}
-                  </span>
-                  <Sparkles class="w-3.5 h-3.5 text-[#C59B27]" />
-                </div>
-                <h3 class="font-bold text-sm text-[#0B2545] font-serif mb-2">
-                  {club.name}
-                </h3>
-                <p class="text-xs text-slate-600 leading-relaxed">
-                  {club.desc}
-                </p>
-              </div>
-            </div>
-          ))}
+        <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <span class="text-xs text-slate-500">Looking for administrative circulars and datesheets?</span>
+          <a
+            href="/notices/"
+            class="inline-flex items-center gap-1.5 text-xs font-bold text-[#0B2545] hover:text-[#C59B27] transition-colors"
+          >
+            <span>Visit School Notice Board</span>
+            <span>→</span>
+          </a>
         </div>
       </div>
 

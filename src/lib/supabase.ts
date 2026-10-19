@@ -629,11 +629,26 @@ export interface FacilityImageRecord {
 export interface FacilityCardConfig {
   image_url: string | null;
   display_order: number;
+  title?: string;
+  show_title?: boolean;
+  page_section?: string;
+}
+
+export interface ManagedGalleryItem {
+  id?: string;
+  facility_key: string;
+  title: string;
+  image_url: string | null;
+  display_order: number;
+  page_section: 'facilities' | 'infrastructure' | 'gallery' | string;
+  show_title: boolean;
+  updated_at?: string;
+  updated_by?: string;
 }
 
 /**
- * Fetch all facility card configurations (images & display orders) from Supabase.
- * Returns a key-value map: { [facility_key]: { image_url, display_order } }
+ * Fetch all facility card configurations (images, titles, visibility & display orders) from Supabase.
+ * Returns a key-value map: { [facility_key]: FacilityCardConfig }
  */
 export async function getFacilityCardConfigs(): Promise<Record<string, FacilityCardConfig>> {
   if (!supabase || !isSupabaseConfigured()) {
@@ -643,18 +658,32 @@ export async function getFacilityCardConfigs(): Promise<Record<string, FacilityC
   const result: Record<string, FacilityCardConfig> = {};
 
   try {
-    // 1. Primary check: dedicated facility_images table
-    const { data, error } = await supabase
+    // 1. Primary check: dedicated facility_images table with show_title & title
+    let { data, error } = await supabase
       .from('facility_images')
-      .select('facility_key, image_url, display_order')
+      .select('facility_key, title, image_url, display_order, show_title, page_section')
+      .or('page_section.eq.facilities,page_section.is.null')
       .order('display_order', { ascending: true });
+
+    // Fallback if page_section or show_title columns are not yet in schema cache
+    if (error && (error.message?.includes('show_title') || error.message?.includes('page_section'))) {
+      const fallback = await supabase
+        .from('facility_images')
+        .select('facility_key, title, image_url, display_order')
+        .order('display_order', { ascending: true });
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (!error && data && Array.isArray(data)) {
       data.forEach((row: any, idx: number) => {
         if (row.facility_key) {
           result[row.facility_key] = {
+            title: row.title || row.facility_key,
             image_url: row.image_url || null,
             display_order: typeof row.display_order === 'number' ? row.display_order : idx,
+            show_title: row.show_title !== false,
+            page_section: row.page_section || 'facilities',
           };
         }
       });
@@ -664,7 +693,7 @@ export async function getFacilityCardConfigs(): Promise<Record<string, FacilityC
     // 2. Fallback check: site_banners table with 'facility_item_' prefix
     const { data: bannerData, error: bannerError } = await supabase
       .from('site_banners')
-      .select('page_key, desktop_image_path, display_order')
+      .select('page_key, title, desktop_image_path, display_order')
       .like('page_key', 'facility_item_%')
       .order('display_order', { ascending: true });
 
@@ -673,8 +702,11 @@ export async function getFacilityCardConfigs(): Promise<Record<string, FacilityC
         const key = row.page_key.replace('facility_item_', '');
         if (key) {
           result[key] = {
+            title: row.title || key,
             image_url: row.desktop_image_path?.trim() ? row.desktop_image_path.trim() : null,
             display_order: typeof row.display_order === 'number' ? row.display_order : idx,
+            show_title: true,
+            page_section: 'facilities',
           };
         }
       });
@@ -684,6 +716,68 @@ export async function getFacilityCardConfigs(): Promise<Record<string, FacilityC
   } catch (err) {
     console.warn('[getFacilityCardConfigs] Error retrieving facility configs:', err);
     return result;
+  }
+}
+
+/**
+ * Fetch all gallery items for a specific section ('facilities' | 'infrastructure' | 'gallery').
+ */
+export async function getGalleryItemsBySection(
+  pageSection: 'facilities' | 'infrastructure' | 'gallery' | string
+): Promise<ManagedGalleryItem[]> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    let { data, error } = await supabase
+      .from('facility_images')
+      .select('*')
+      .eq('page_section', pageSection)
+      .order('display_order', { ascending: true });
+
+    // Fallback if page_section column not yet created
+    if (error && error.message?.includes('page_section')) {
+      if (pageSection === 'facilities') {
+        const fallback = await supabase
+          .from('facility_images')
+          .select('*')
+          .order('display_order', { ascending: true });
+        data = fallback.data;
+        error = fallback.error;
+      } else if (pageSection === 'infrastructure') {
+        const fallback = await supabase
+          .from('facility_images')
+          .select('*')
+          .eq('facility_key', 'campus_main')
+          .limit(1);
+        data = fallback.data;
+        error = fallback.error;
+      } else {
+        data = [];
+        error = null;
+      }
+    }
+
+    if (error || !data) {
+      console.warn(`[getGalleryItemsBySection] Error fetching ${pageSection} items:`, error?.message);
+      return [];
+    }
+
+    return data.map((row: any, idx: number) => ({
+      id: row.id,
+      facility_key: row.facility_key,
+      title: row.title || row.facility_key,
+      image_url: row.image_url || null,
+      display_order: typeof row.display_order === 'number' ? row.display_order : idx,
+      page_section: row.page_section || pageSection,
+      show_title: row.show_title !== false,
+      updated_at: row.updated_at,
+      updated_by: row.updated_by,
+    })) as ManagedGalleryItem[];
+  } catch (err) {
+    console.warn(`[getGalleryItemsBySection] Exception for ${pageSection}:`, err);
+    return [];
   }
 }
 
@@ -703,11 +797,21 @@ export async function getFacilityImages(): Promise<Record<string, string>> {
 }
 
 /**
- * Update the display sequence for all facilities cards in Supabase.
- * Assigns deterministic 0-indexed display_order to each card key.
+ * Update the display sequence for cards in Supabase.
  */
 export async function updateFacilityOrders(
   orderedKeys: string[],
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  return updateGalleryOrders(orderedKeys, 'facilities', updatedBy);
+}
+
+/**
+ * Update the display sequence for any page section ('facilities' | 'gallery').
+ */
+export async function updateGalleryOrders(
+  orderedKeys: string[],
+  pageSection: string = 'facilities',
   updatedBy?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!supabase || !isSupabaseConfigured()) {
@@ -715,28 +819,24 @@ export async function updateFacilityOrders(
   }
 
   if (!orderedKeys || orderedKeys.length === 0) {
-    return { success: false, error: 'No facility card keys provided to order.' };
+    return { success: false, error: 'No keys provided to order.' };
   }
 
   try {
     const timestamp = new Date().toISOString();
     const updater = updatedBy || 'Admin Staff';
 
-    // 1. Try updating facility_images table
     let primarySuccess = true;
     for (let idx = 0; idx < orderedKeys.length; idx++) {
       const key = orderedKeys[idx];
       const { error } = await supabase
         .from('facility_images')
-        .upsert(
-          {
-            facility_key: key,
-            display_order: idx,
-            updated_at: timestamp,
-            updated_by: updater,
-          },
-          { onConflict: 'facility_key' }
-        );
+        .update({
+          display_order: idx,
+          updated_at: timestamp,
+          updated_by: updater,
+        })
+        .eq('facility_key', key);
 
       if (error) {
         primarySuccess = false;
@@ -748,133 +848,93 @@ export async function updateFacilityOrders(
       return { success: true };
     }
 
-    // 2. Fallback to site_banners table
-    for (let idx = 0; idx < orderedKeys.length; idx++) {
-      const key = orderedKeys[idx];
-      const bannerPageKey = `facility_item_${key}`;
-
-      const { data: existing } = await supabase
-        .from('site_banners')
-        .select('id')
-        .eq('page_key', bannerPageKey)
-        .limit(1);
-
-      if (existing && existing.length > 0) {
-        const { error: updErr } = await supabase
-          .from('site_banners')
-          .update({
-            display_order: idx,
-            updated_at: timestamp,
-            updated_by: updater,
-          })
-          .eq('page_key', bannerPageKey);
-
-        if (updErr) {
-          return { success: false, error: updErr.message };
-        }
-      } else {
-        const { error: insErr } = await supabase
-          .from('site_banners')
-          .insert({
-            page_key: bannerPageKey,
-            page_path: '/facilities',
-            title: key,
-            desktop_image_path: '',
-            mobile_image_path: '',
-            is_published: true,
-            display_order: idx,
-            updated_at: timestamp,
-            updated_by: updater,
-          });
-
-        if (insErr) {
-          return { success: false, error: insErr.message };
-        }
-      }
-    }
-
-    return { success: true };
+    return { success: false, error: 'Failed to update item display order.' };
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update facility display orders.' };
+    return { success: false, error: err?.message || 'Failed to update display orders.' };
   }
 }
 
 /**
- * Update or save an image for a specific facility card.
+ * Save, create, or update any managed gallery item across Facilities, Infrastructure, or Gallery pages.
  */
-export async function updateFacilityImage(
-  facilityKey: string,
-  imageUrl: string | null,
-  title?: string,
-  updatedBy?: string
+export async function saveGalleryItem(
+  item: {
+    facility_key: string;
+    title: string;
+    image_url: string | null;
+    display_order?: number;
+    page_section?: 'facilities' | 'infrastructure' | 'gallery' | string;
+    show_title?: boolean;
+    updated_by?: string;
+  }
 ): Promise<{ success: boolean; error?: string }> {
   if (!supabase || !isSupabaseConfigured()) {
     return { success: false, error: 'Supabase client is not configured.' };
   }
 
   try {
-    // 1. Attempt upsert into dedicated facility_images table
+    const payload: any = {
+      facility_key: item.facility_key,
+      title: item.title,
+      image_url: item.image_url,
+      updated_at: new Date().toISOString(),
+      updated_by: item.updated_by || 'Admin Staff',
+    };
+
+    if (typeof item.display_order === 'number') {
+      payload.display_order = item.display_order;
+    }
+    if (item.page_section) {
+      payload.page_section = item.page_section;
+    }
+    if (typeof item.show_title === 'boolean') {
+      payload.show_title = item.show_title;
+    }
+
     const { error } = await supabase
       .from('facility_images')
-      .upsert(
-        {
-          facility_key: facilityKey,
-          title: title || facilityKey,
-          image_url: imageUrl,
-          updated_at: new Date().toISOString(),
-          updated_by: updatedBy || 'Admin Staff',
-        },
-        { onConflict: 'facility_key' }
-      );
+      .upsert(payload, { onConflict: 'facility_key' });
 
     if (!error) {
       return { success: true };
     }
 
-    // 2. If facility_images table does not exist in schema cache, fallback to site_banners
-    const tableMissing = error.message?.includes('facility_images') || (error as any).code === '42P01';
-    if (tableMissing) {
-      const bannerPageKey = `facility_item_${facilityKey}`;
-
-      const { data: existing } = await supabase
-        .from('site_banners')
-        .select('id')
-        .eq('page_key', bannerPageKey)
-        .limit(1);
-
-      if (existing && existing.length > 0) {
-        await supabase
-          .from('site_banners')
-          .update({
-            title: title || facilityKey,
-            desktop_image_path: imageUrl || '',
-            mobile_image_path: imageUrl || '',
-            updated_at: new Date().toISOString(),
-            updated_by: updatedBy || 'Admin Staff',
-          })
-          .eq('page_key', bannerPageKey);
-      } else if (imageUrl) {
-        await supabase
-          .from('site_banners')
-          .insert({
-            page_key: bannerPageKey,
-            page_path: '/facilities',
-            title: title || facilityKey,
-            desktop_image_path: imageUrl,
-            mobile_image_path: imageUrl,
-            is_published: true,
-            display_order: 0,
-            updated_at: new Date().toISOString(),
-            updated_by: updatedBy || 'Admin Staff',
-          });
+    // Fallback if show_title or page_section columns missing in database
+    if (error.message?.includes('show_title') || error.message?.includes('page_section')) {
+      delete payload.show_title;
+      delete payload.page_section;
+      const fallbackRes = await supabase
+        .from('facility_images')
+        .upsert(payload, { onConflict: 'facility_key' });
+      if (!fallbackRes.error) {
+        return { success: true };
       }
-      return { success: true };
     }
 
     return { success: false, error: error.message };
   } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to update facility image.' };
+    return { success: false, error: err?.message || 'Failed to save gallery item.' };
   }
+}
+
+/**
+ * Update or save an image for a specific facility card (backward-compatible).
+ */
+export async function updateFacilityImage(
+  facilityKey: string,
+  imageUrl: string | null,
+  title?: string,
+  updatedBy?: string,
+  showTitle?: boolean
+): Promise<{ success: boolean; error?: string }> {
+  return saveGalleryItem({
+    facility_key: facilityKey,
+    title: title || facilityKey,
+    image_url: imageUrl,
+    page_section: 'facilities',
+    show_title: showTitle ?? true,
+    updated_by: updatedBy,
+  });
 }
 
 /**
@@ -886,6 +946,253 @@ export async function removeFacilityImage(
 ): Promise<{ success: boolean; error?: string }> {
   return updateFacilityImage(facilityKey, null, undefined, updatedBy);
 }
+
+/**
+ * Delete a gallery item completely from the database.
+ */
+export async function deleteGalleryItem(
+  facilityKey: string,
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('facility_images')
+      .delete()
+      .eq('facility_key', facilityKey);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to delete gallery item.' };
+  }
+}
+
+// ==============================================================================
+// Gallery Card Image Sets (Multiple Images Per Card for /gallery/)
+// ==============================================================================
+
+export interface GalleryCardImageItem {
+  id: string;
+  card_key: string;
+  image_url: string;
+  caption?: string;
+  display_order: number;
+  created_at?: string;
+  updated_at?: string;
+  updated_by?: string;
+}
+
+export interface FetchGalleryImagesResult {
+  data: GalleryCardImageItem[];
+  error?: string | null;
+}
+
+/**
+ * Fetch all images belonging to a specific gallery card's image set with error details.
+ */
+export async function fetchGalleryCardImages(cardKey: string): Promise<FetchGalleryImagesResult> {
+  if (!cardKey || typeof cardKey !== 'string') {
+    return { data: [], error: 'Invalid or missing card key.' };
+  }
+  if (!supabase || !isSupabaseConfigured()) {
+    return { data: [], error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('gallery_card_images')
+      .select('*')
+      .eq('card_key', cardKey)
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.warn(`[fetchGalleryCardImages] Supabase error for ${cardKey}:`, error.message);
+      return { data: [], error: error.message };
+    }
+
+    return { data: (data as GalleryCardImageItem[]) || [], error: null };
+  } catch (err: any) {
+    console.error(`[fetchGalleryCardImages] Exception for ${cardKey}:`, err);
+    return { data: [], error: err?.message || 'Network error while fetching images.' };
+  }
+}
+
+/**
+ * Fetch all images belonging to a specific gallery card's image set (array return).
+ */
+export async function getGalleryCardImages(cardKey: string): Promise<GalleryCardImageItem[]> {
+  const res = await fetchGalleryCardImages(cardKey);
+  return res.data || [];
+}
+
+/**
+ * Fetch all card image sets grouped by card_key: { [card_key]: GalleryCardImageItem[] }
+ */
+export async function getAllGalleryCardImages(): Promise<Record<string, GalleryCardImageItem[]>> {
+  if (!supabase || !isSupabaseConfigured()) return {};
+  try {
+    const { data, error } = await supabase
+      .from('gallery_card_images')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error || !data) return {};
+
+    const grouped: Record<string, GalleryCardImageItem[]> = {};
+    for (const row of data) {
+      if (!grouped[row.card_key]) grouped[row.card_key] = [];
+      grouped[row.card_key].push(row as GalleryCardImageItem);
+    }
+    return grouped;
+  } catch (err) {
+    console.warn('[getAllGalleryCardImages] Error fetching all set images:', err);
+    return {};
+  }
+}
+
+/**
+ * Add multiple images to a gallery card's image set.
+ */
+export async function addImagesToGallerySet(
+  cardKey: string,
+  imageUrls: string[],
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string; inserted?: GalleryCardImageItem[] }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+  if (!imageUrls || imageUrls.length === 0) {
+    return { success: true, inserted: [] };
+  }
+
+  try {
+    // 1. Get current count / max display_order for this card
+    const existing = await getGalleryCardImages(cardKey);
+    const startOrder = existing.length;
+
+    const rowsToInsert = imageUrls.map((url, i) => ({
+      card_key: cardKey,
+      image_url: url,
+      display_order: startOrder + i,
+      updated_by: updatedBy || 'Admin Staff',
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { data, error } = await supabase
+      .from('gallery_card_images')
+      .insert(rowsToInsert)
+      .select('*');
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, inserted: (data as GalleryCardImageItem[]) || [] };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to add images to set.' };
+  }
+}
+
+/**
+ * Persistently update the display order of images within a gallery card set.
+ */
+export async function updateGallerySetImageOrder(
+  cardKey: string,
+  orderedImageIds: string[],
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const timestamp = new Date().toISOString();
+    const updater = updatedBy || 'Admin Staff';
+
+    for (let idx = 0; idx < orderedImageIds.length; idx++) {
+      const id = orderedImageIds[idx];
+      const { error } = await supabase
+        .from('gallery_card_images')
+        .update({
+          display_order: idx,
+          updated_at: timestamp,
+          updated_by: updater,
+        })
+        .eq('id', id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to reorder image set.' };
+  }
+}
+
+/**
+ * Replace a specific image in a card set.
+ */
+export async function replaceGallerySetImage(
+  imageId: string,
+  newImageUrl: string,
+  updatedBy?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('gallery_card_images')
+      .update({
+        image_url: newImageUrl,
+        updated_at: new Date().toISOString(),
+        updated_by: updatedBy || 'Admin Staff',
+      })
+      .eq('id', imageId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to replace image.' };
+  }
+}
+
+/**
+ * Delete a specific image from a card set.
+ */
+export async function deleteGallerySetImage(imageId: string): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('gallery_card_images')
+      .delete()
+      .eq('id', imageId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to delete image.' };
+  }
+}
+
 
 
 

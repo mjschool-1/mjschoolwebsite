@@ -1,49 +1,16 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { Trees, Sprout, Heart, Sparkles, BookOpen, Trophy } from 'lucide-react';
+import { CampusInfrastructureFrame } from '../../components/CampusInfrastructureFrame';
 
 const breadcrumbs = [
   { label: 'About Us', href: '/about/principals-message/' },
   { label: 'Infrastructure' },
 ];
-
-const highlights = [
-  {
-    icon: Trees,
-    title: 'Green Learning Environment',
-    desc: 'A cleaner, greener school environment that inspires children to connect with nature and care for their surroundings.',
-  },
-  {
-    icon: Sprout,
-    title: 'Environmental Awareness',
-    desc: 'Nature walks and cleanliness activities encourage eco-friendly habits and environmental responsibility.',
-  },
-  {
-    icon: Heart,
-    title: 'A Caring School Environment',
-    desc: 'We encourage a culture of respect, attentive supervision, and positive learning experiences for every child.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Clean & Hygienic Facilities',
-    desc: 'Classroom and sanitary facilities designed to support students’ everyday comfort and hygiene.',
-  },
-  {
-    icon: BookOpen,
-    title: 'Learning Through Strong Foundations',
-    desc: 'Building essential skills in languages, mathematics, and core subjects through structured learning and regular assessments.',
-  },
-  {
-    icon: Trophy,
-    title: 'All-Round Development',
-    desc: 'Creative activities, sports, and cultural celebrations nurture confidence, teamwork, and Indian values.',
-  },
-];
 ---
 
 <PublicLayout
-  title="Our Campus & Infrastructure | MJ School Shahpur"
-  description="Explore the campus environment of MJ School, Shahpur — a thoughtfully planned school where young minds build strong foundations and grow with confidence."
+  title="Our Campus & Infrastructure | MJ School Shahapur"
+  description="Explore the campus environment of MJ School, Shahapur — a thoughtfully planned school where young minds build strong foundations and grow with confidence."
   breadcrumbs={breadcrumbs}
   pageTitle="Our Campus & Infrastructure"
   pageSubtitle="A thoughtfully planned school environment where young minds build strong foundations, discover their interests, and grow with confidence."
@@ -51,11 +18,11 @@ const highlights = [
   bannerClass="infrastructure-banner"
   hideBannerText={true}
 >
-  <div class="pt-8 sm:pt-10 md:pt-12 pb-12 bg-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="pt-8 sm:pt-10 md:pt-12 pb-12 sm:pb-16 bg-white">
+    <div class="max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
       
       {/* Relocated Hero Content: Breadcrumb, Main Heading, and Subtitle */}
-      <div class="text-center max-w-4xl mx-auto mb-10 sm:mb-12">
+      <div class="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
         <nav aria-label="Breadcrumb" class="mb-3 sm:mb-4">
           <ol class="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm text-slate-600 font-medium">
             <li>
@@ -87,57 +54,8 @@ const highlights = [
         </p>
       </div>
 
-      {/* Visual Hero Feature Placeholder */}
-      <div class="relative rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 mb-12 min-h-[220px] sm:min-h-[260px] md:h-80 flex flex-col justify-end p-6 sm:p-8">
-        <div>
-          <span class="inline-block bg-[#0B2545] text-[#F6D55C] font-black text-xs uppercase px-3 py-1 rounded shadow-sm tracking-wider">
-            CAMPUS INFRASTRUCTURE
-          </span>
-        </div>
-      </div>
-
-      {/* Infrastructure Feature Cards Grid */}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {highlights.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all group flex flex-col h-full justify-between">
-              <div>
-                <div class="w-12 h-12 rounded-lg bg-blue-100 text-[#0B2545] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-[#C59B27] group-hover:text-white transition-all">
-                  <Icon class="w-6 h-6" />
-                </div>
-                <h3 class="font-bold text-base text-[#0B2545] font-serif mb-2">
-                  {item.title}
-                </h3>
-                <p class="text-xs text-slate-600 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Bottom Commitment Banner */}
-      <div class="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div class="max-w-2xl">
-          <span class="text-xs text-[#F6D55C] font-bold uppercase tracking-wider block mb-1">
-            OUR COMMITMENT
-          </span>
-          <h3 class="text-lg sm:text-xl font-bold font-serif leading-snug">
-            A Strong Foundation for Every Child
-          </h3>
-          <p class="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
-            At MJ School, we bring together academic learning, Indian values, creativity, and opportunities for all-round development to help young learners take confident steps towards their future.
-          </p>
-        </div>
-        <a
-          href="/academics/syllabus/"
-          class="shrink-0 w-full sm:w-auto text-center bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold text-xs uppercase px-6 py-3 rounded-lg shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          Explore our academic approach
-        </a>
-      </div>
+      {/* Campus Infrastructure Image Frame: 1536 × 1024 (Aspect Ratio 3:2) */}
+      <CampusInfrastructureFrame client:load />
 
     </div>
   </div>

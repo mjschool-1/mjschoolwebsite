@@ -20,10 +20,24 @@ import {
   updateFacilityOrders,
   updateFacilityImage,
   removeFacilityImage,
+  getGalleryItemsBySection,
+  saveGalleryItem,
+  updateGalleryOrders,
+  deleteGalleryItem,
+  ManagedGalleryItem,
+  getAllGalleryCardImages,
+  getGalleryCardImages,
+  fetchGalleryCardImages,
+  addImagesToGallerySet,
+  updateGallerySetImageOrder,
+  replaceGallerySetImage,
+  deleteGallerySetImage,
+  GalleryCardImageItem,
 } from '../../lib/supabase';
 import { FACILITIES_CARDS, FacilityCardItem } from '../../data/schoolData';
 import {
   Image as ImageIcon,
+  Images,
   Users,
   Receipt,
   LogOut,
@@ -64,6 +78,66 @@ interface SelectedImageState {
   width: number;
   height: number;
   sizeKb: number;
+}
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class AdminErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[AdminErrorBoundary] Intercepted runtime error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white border border-rose-200 rounded-2xl p-8 shadow-xl text-center">
+            <div className="w-14 h-14 bg-rose-50 border border-rose-200 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-600">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-bold font-serif text-[#0B2545] mb-2">
+              School Office Portal Notice
+            </h2>
+            <p className="text-xs text-slate-600 leading-relaxed mb-4">
+              A temporary display error was intercepted to prevent a blank white screen. You can reload the portal below.
+            </p>
+            {this.state.error && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-700 font-mono text-left overflow-x-auto mb-5">
+                {this.state.error.message || String(this.state.error)}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="w-full py-2.5 px-4 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+            >
+              Reload School Office Portal
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export const SchoolOfficeAdmin: React.FC = () => {
@@ -124,9 +198,14 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [noticeSearchQuery, setNoticeSearchQuery] = useState<string>('');
   const [noticeCategoryFilter, setNoticeCategoryFilter] = useState<string>('All');
 
+  // Multi-Section Gallery Management State ('facilities' | 'infrastructure' | 'gallery')
+  const [gallerySubTab, setGallerySubTab] = useState<'facilities' | 'infrastructure' | 'gallery'>('facilities');
+
   // Facilities Gallery management & reordering state
   const [orderedFacilityCards, setOrderedFacilityCards] = useState<FacilityCardItem[]>(FACILITIES_CARDS);
   const [facilityImages, setFacilityImages] = useState<Record<string, string>>({});
+  const [facilityTitles, setFacilityTitles] = useState<Record<string, string>>({});
+  const [facilityShowTitles, setFacilityShowTitles] = useState<Record<string, boolean>>({});
   const [facilityImagesLoading, setFacilityImagesLoading] = useState<boolean>(false);
   const [facilityDragIndex, setFacilityDragIndex] = useState<number | null>(null);
   const [facilityDragOverIndex, setFacilityDragOverIndex] = useState<number | null>(null);
@@ -136,19 +215,61 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [uploadingFacilityKey, setUploadingFacilityKey] = useState<string | null>(null);
   const [facilityMessages, setFacilityMessages] = useState<Record<string, { type: 'success' | 'error'; text: string } | null>>({});
 
+  // Campus Infrastructure image management state
+  const [infraItem, setInfraItem] = useState<ManagedGalleryItem | null>(null);
+  const [infraTitle, setInfraTitle] = useState<string>('CAMPUS INFRASTRUCTURE');
+  const [infraShowTitle, setInfraShowTitle] = useState<boolean>(true);
+  const [infraSelectedFile, setInfraSelectedFile] = useState<SelectedImageState | null>(null);
+  const [infraUploading, setInfraUploading] = useState<boolean>(false);
+  const [infraLoading, setInfraLoading] = useState<boolean>(false);
+  const [infraMessage, setInfraMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Public Gallery Page (/gallery/) management & reordering state
+  const [galleryPageItems, setGalleryPageItems] = useState<ManagedGalleryItem[]>([]);
+  const [galleryPageLoading, setGalleryPageLoading] = useState<boolean>(false);
+  const [galleryTitles, setGalleryTitles] = useState<Record<string, string>>({});
+  const [galleryShowTitles, setGalleryShowTitles] = useState<Record<string, boolean>>({});
+  const [selectedGalleryFiles, setSelectedGalleryFiles] = useState<Record<string, SelectedImageState | null>>({});
+  const [uploadingGalleryKey, setUploadingGalleryKey] = useState<string | null>(null);
+  const [galleryItemMessages, setGalleryItemMessages] = useState<Record<string, { type: 'success' | 'error'; text: string } | null>>({});
+  const [isReorderingGallery, setIsReorderingGallery] = useState<boolean>(false);
+  const [galleryDragIndex, setGalleryDragIndex] = useState<number | null>(null);
+  const [galleryDragOverIndex, setGalleryDragOverIndex] = useState<number | null>(null);
+
+  // Gallery Card Image Sets state
+  const [galleryCardSets, setGalleryCardSets] = useState<Record<string, GalleryCardImageItem[]>>({});
+  const [managingSetCard, setManagingSetCard] = useState<ManagedGalleryItem | null>(null);
+  const [setImagesList, setSetImagesList] = useState<GalleryCardImageItem[]>([]);
+  const [setModalUploading, setSetModalUploading] = useState<boolean>(false);
+  const [setUploadProgress, setSetUploadProgress] = useState<string | null>(null);
+  const [setModalMessage, setSetModalMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [deleteConfirmImageId, setDeleteConfirmImageId] = useState<string | null>(null);
+  const [setImagesLoading, setSetImagesLoading] = useState<boolean>(false);
+  const [setImagesFetchError, setSetImagesFetchError] = useState<string | null>(null);
+
+
   const loadFacilityImages = useCallback(async () => {
     setFacilityImagesLoading(true);
     try {
       const configs = await getFacilityCardConfigs();
 
-      // Update image mapping
+      // Update image mapping, titles and showTitles
       const imgMap: Record<string, string> = {};
-      for (const [key, val] of Object.entries(configs)) {
-        if (val.image_url) {
-          imgMap[key] = val.image_url;
+      const titlesMap: Record<string, string> = {};
+      const showTitlesMap: Record<string, boolean> = {};
+
+      for (const card of FACILITIES_CARDS) {
+        const conf = configs[card.key];
+        if (conf?.image_url) {
+          imgMap[card.key] = conf.image_url;
         }
+        titlesMap[card.key] = conf?.title || card.title;
+        showTitlesMap[card.key] = conf?.show_title !== false;
       }
+
       setFacilityImages(imgMap);
+      setFacilityTitles(titlesMap);
+      setFacilityShowTitles(showTitlesMap);
 
       // Sort cards according to saved display_order
       const sortedCards = [...FACILITIES_CARDS].sort((a, b) => {
@@ -166,11 +287,70 @@ export const SchoolOfficeAdmin: React.FC = () => {
     }
   }, []);
 
+  const loadInfraImage = useCallback(async () => {
+    setInfraLoading(true);
+    try {
+      const items = await getGalleryItemsBySection('infrastructure');
+      if (items && items.length > 0) {
+        const item = items[0];
+        setInfraItem(item);
+        setInfraTitle(item.title || 'CAMPUS INFRASTRUCTURE');
+        setInfraShowTitle(item.show_title !== false);
+      } else {
+        setInfraItem(null);
+        setInfraTitle('CAMPUS INFRASTRUCTURE');
+        setInfraShowTitle(true);
+      }
+    } catch (err) {
+      console.warn('[GalleryAdmin] Error loading infrastructure image:', err);
+    } finally {
+      setInfraLoading(false);
+    }
+  }, []);
+
+  const loadGalleryPageItems = useCallback(async () => {
+    setGalleryPageLoading(true);
+    try {
+      let items = await getGalleryItemsBySection('gallery');
+      if (!items || items.length === 0) {
+        // Seed default 3 items in UI state if database has none
+        items = [
+          { facility_key: 'gallery_1', title: 'Everyday Learning', image_url: null, display_order: 0, page_section: 'gallery', show_title: true },
+          { facility_key: 'gallery_2', title: 'Learning Beyond Books', image_url: null, display_order: 1, page_section: 'gallery', show_title: true },
+          { facility_key: 'gallery_3', title: 'Rooted in Indian Values', image_url: null, display_order: 2, page_section: 'gallery', show_title: true },
+        ];
+      } else {
+        items = [...items].sort((a, b) => a.display_order - b.display_order);
+      }
+
+      setGalleryPageItems(items);
+
+      const titlesMap: Record<string, string> = {};
+      const showTitlesMap: Record<string, boolean> = {};
+      for (const it of items) {
+        titlesMap[it.facility_key] = it.title || '';
+        showTitlesMap[it.facility_key] = it.show_title !== false;
+      }
+      setGalleryTitles(titlesMap);
+      setGalleryShowTitles(showTitlesMap);
+
+      // Load all card image sets
+      const sets = await getAllGalleryCardImages();
+      setGalleryCardSets(sets || {});
+    } catch (err) {
+      console.warn('[GalleryAdmin] Error loading gallery page items:', err);
+    } finally {
+      setGalleryPageLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated && activeTab === 'gallery') {
       loadFacilityImages();
+      loadInfraImage();
+      loadGalleryPageItems();
     }
-  }, [isAuthenticated, activeTab, loadFacilityImages]);
+  }, [isAuthenticated, activeTab, loadFacilityImages, loadInfraImage, loadGalleryPageItems]);
 
   // Reorder Handlers for Facilities Grid Cards
   const handleFacilityDragStart = (e: React.DragEvent, index: number) => {
@@ -371,11 +551,14 @@ export const SchoolOfficeAdmin: React.FC = () => {
       }
 
       // 3. Save to database
+      const cardTitle = facilityTitles[card.key]?.trim() || card.title;
+      const showTitle = facilityShowTitles[card.key] !== false;
       const saveRes = await updateFacilityImage(
         card.key,
         persistentUrl,
-        card.title,
-        currentUserEmail || 'Admin'
+        cardTitle,
+        currentUserEmail || 'Admin',
+        showTitle
       );
 
       if (!saveRes.success) {
@@ -389,7 +572,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         ...prev,
         [card.key]: {
           type: 'success',
-          text: `Image for "${card.title}" uploaded and saved successfully!`,
+          text: `Image & title for "${cardTitle}" saved successfully!`,
         },
       }));
     } catch (err: any) {
@@ -406,6 +589,52 @@ export const SchoolOfficeAdmin: React.FC = () => {
     }
   };
 
+  const handleSaveFacilitySettings = async (card: FacilityCardItem) => {
+    const selected = selectedFacilityFiles[card.key];
+    if (selected) {
+      return handleUploadFacilityImage(card);
+    }
+
+    const cardTitle = facilityTitles[card.key]?.trim() || card.title;
+    const showTitle = facilityShowTitles[card.key] !== false;
+    const currentSavedUrl = facilityImages[card.key] || null;
+
+    setUploadingFacilityKey(card.key);
+    setFacilityMessages((prev) => ({ ...prev, [card.key]: null }));
+
+    try {
+      const saveRes = await updateFacilityImage(
+        card.key,
+        currentSavedUrl,
+        cardTitle,
+        currentUserEmail || 'Admin',
+        showTitle
+      );
+
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || 'Failed to save settings.');
+      }
+
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: {
+          type: 'success',
+          text: `Settings for "${cardTitle}" saved! Title: ${showTitle ? 'Visible' : 'Hidden'}.`,
+        },
+      }));
+    } catch (err: any) {
+      setFacilityMessages((prev) => ({
+        ...prev,
+        [card.key]: {
+          type: 'error',
+          text: err.message || 'Failed to save settings.',
+        },
+      }));
+    } finally {
+      setUploadingFacilityKey(null);
+    }
+  };
+
   const handleRemoveFacilityImage = async (card: FacilityCardItem) => {
     if (!window.confirm(`Are you sure you want to remove the image for "${card.title}"? This card will display an empty frame on the website.`)) {
       return;
@@ -415,7 +644,9 @@ export const SchoolOfficeAdmin: React.FC = () => {
     setFacilityMessages((prev) => ({ ...prev, [card.key]: null }));
 
     try {
-      const res = await removeFacilityImage(card.key, currentUserEmail || 'Admin');
+      const cardTitle = facilityTitles[card.key]?.trim() || card.title;
+      const showTitle = facilityShowTitles[card.key] !== false;
+      const res = await updateFacilityImage(card.key, null, cardTitle, currentUserEmail || 'Admin', showTitle);
       if (!res.success) {
         throw new Error(res.error || 'Failed to remove image record.');
       }
@@ -430,7 +661,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         ...prev,
         [card.key]: {
           type: 'success',
-          text: `Image removed. "${card.title}" now displays an empty frame.`,
+          text: `Image removed. "${cardTitle}" now displays an empty frame.`,
         },
       }));
     } catch (err: any) {
@@ -445,6 +676,727 @@ export const SchoolOfficeAdmin: React.FC = () => {
       setUploadingFacilityKey(null);
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Campus Infrastructure Image Handlers
+  // ---------------------------------------------------------------------------
+  const handleSelectInfraImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setInfraMessage(null);
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!validTypes.includes(file.type.toLowerCase())) {
+      setInfraMessage({
+        type: 'error',
+        text: 'Please upload a valid image file (JPG, PNG, or WebP).',
+      });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setInfraMessage({
+        type: 'error',
+        text: 'Image file size must be less than 10 MB.',
+      });
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      setInfraSelectedFile({
+        file,
+        previewUrl,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        sizeKb: Math.round(file.size / 1024),
+      });
+    };
+    img.src = previewUrl;
+  };
+
+  const handleCancelInfraSelect = () => {
+    if (infraSelectedFile?.previewUrl) {
+      URL.revokeObjectURL(infraSelectedFile.previewUrl);
+    }
+    setInfraSelectedFile(null);
+    setInfraMessage(null);
+  };
+
+  const handleSaveInfraImage = async () => {
+    if (!supabase || !isSupabaseConfigured()) {
+      setInfraMessage({ type: 'error', text: 'Supabase client is not configured.' });
+      return;
+    }
+
+    setInfraUploading(true);
+    setInfraMessage(null);
+
+    try {
+      let persistentUrl = infraItem?.image_url || null;
+
+      if (infraSelectedFile) {
+        const ext = infraSelectedFile.file.name.split('.').pop()?.toLowerCase() || 'png';
+        const timestamp = Date.now();
+        const storagePath = `infrastructure-campus-${timestamp}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('site-banners')
+          .upload(storagePath, infraSelectedFile.file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(`Storage upload failed: ${uploadError.message}`);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('site-banners')
+          .getPublicUrl(storagePath);
+
+        if (!publicUrlData?.publicUrl) {
+          throw new Error('Failed to resolve public image URL from storage.');
+        }
+
+        persistentUrl = publicUrlData.publicUrl;
+      }
+
+      const finalTitle = infraTitle.trim() || 'CAMPUS INFRASTRUCTURE';
+      const saveRes = await saveGalleryItem({
+        facility_key: 'campus_main',
+        title: finalTitle,
+        image_url: persistentUrl,
+        display_order: 0,
+        page_section: 'infrastructure',
+        show_title: infraShowTitle,
+        updated_by: currentUserEmail || 'Admin',
+      });
+
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || 'Failed to save infrastructure record.');
+      }
+
+      setInfraItem({
+        facility_key: 'campus_main',
+        title: finalTitle,
+        image_url: persistentUrl,
+        display_order: 0,
+        page_section: 'infrastructure',
+        show_title: infraShowTitle,
+      });
+      setInfraSelectedFile(null);
+      setInfraMessage({
+        type: 'success',
+        text: `Campus Infrastructure image and settings saved! Title: ${infraShowTitle ? 'Visible' : 'Hidden'}.`,
+      });
+    } catch (err: any) {
+      console.error('[GalleryAdmin] Infra upload error:', err);
+      setInfraMessage({
+        type: 'error',
+        text: err.message || 'Failed to save infrastructure image.',
+      });
+    } finally {
+      setInfraUploading(false);
+    }
+  };
+
+  const handleRemoveInfraImage = async () => {
+    if (!window.confirm('Are you sure you want to remove the campus infrastructure image? The page will display the placeholder frame.')) {
+      return;
+    }
+
+    setInfraUploading(true);
+    setInfraMessage(null);
+
+    try {
+      const finalTitle = infraTitle.trim() || 'CAMPUS INFRASTRUCTURE';
+      const res = await saveGalleryItem({
+        facility_key: 'campus_main',
+        title: finalTitle,
+        image_url: null,
+        display_order: 0,
+        page_section: 'infrastructure',
+        show_title: infraShowTitle,
+        updated_by: currentUserEmail || 'Admin',
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to remove image record.');
+      }
+
+      setInfraItem((prev) => (prev ? { ...prev, image_url: null } : null));
+      setInfraSelectedFile(null);
+      setInfraMessage({
+        type: 'success',
+        text: 'Campus infrastructure image removed. Frame now displays default placeholder.',
+      });
+    } catch (err: any) {
+      setInfraMessage({
+        type: 'error',
+        text: err.message || 'Failed to remove infrastructure image.',
+      });
+    } finally {
+      setInfraUploading(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Gallery Page Moments (/gallery/) Handlers
+  // ---------------------------------------------------------------------------
+  const handleSelectGalleryFile = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setGalleryItemMessages((prev) => ({ ...prev, [key]: null }));
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!validTypes.includes(file.type.toLowerCase())) {
+      setGalleryItemMessages((prev) => ({
+        ...prev,
+        [key]: { type: 'error', text: 'Please upload a valid image file (JPG, PNG, or WebP).' },
+      }));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setGalleryItemMessages((prev) => ({
+        ...prev,
+        [key]: { type: 'error', text: 'Image file size must be less than 8 MB.' },
+      }));
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      setSelectedGalleryFiles((prev) => ({
+        ...prev,
+        [key]: {
+          file,
+          previewUrl,
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+          sizeKb: Math.round(file.size / 1024),
+        },
+      }));
+    };
+    img.src = previewUrl;
+  };
+
+  const handleCancelGallerySelect = (key: string) => {
+    const selected = selectedGalleryFiles[key];
+    if (selected?.previewUrl) {
+      URL.revokeObjectURL(selected.previewUrl);
+    }
+    setSelectedGalleryFiles((prev) => ({ ...prev, [key]: null }));
+    setGalleryItemMessages((prev) => ({ ...prev, [key]: null }));
+  };
+
+  const handleSaveGalleryItem = async (item: ManagedGalleryItem) => {
+    const key = item.facility_key;
+    const selected = selectedGalleryFiles[key];
+    const cardTitle = galleryTitles[key]?.trim() || item.title || 'Gallery Moment';
+    const showTitle = galleryShowTitles[key] !== false;
+
+    setUploadingGalleryKey(key);
+    setGalleryItemMessages((prev) => ({ ...prev, [key]: null }));
+
+    try {
+      let persistentUrl = item.image_url;
+
+      if (selected) {
+        const ext = selected.file.name.split('.').pop()?.toLowerCase() || 'png';
+        const timestamp = Date.now();
+        const storagePath = `gallery-${key}-${timestamp}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('site-banners')
+          .upload(storagePath, selected.file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw new Error(`Storage upload failed: ${uploadError.message}`);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('site-banners')
+          .getPublicUrl(storagePath);
+
+        if (!publicUrlData?.publicUrl) {
+          throw new Error('Failed to resolve public image URL from storage.');
+        }
+
+        persistentUrl = publicUrlData.publicUrl;
+      }
+
+      const saveRes = await saveGalleryItem({
+        facility_key: key,
+        title: cardTitle,
+        image_url: persistentUrl,
+        display_order: item.display_order,
+        page_section: 'gallery',
+        show_title: showTitle,
+        updated_by: currentUserEmail || 'Admin',
+      });
+
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || 'Failed to save gallery item.');
+      }
+
+      setGalleryPageItems((prev) =>
+        prev.map((it) =>
+          it.facility_key === key
+            ? { ...it, title: cardTitle, image_url: persistentUrl, show_title: showTitle }
+            : it
+        )
+      );
+      setSelectedGalleryFiles((prev) => ({ ...prev, [key]: null }));
+      setGalleryItemMessages((prev) => ({
+        ...prev,
+        [key]: {
+          type: 'success',
+          text: `"${cardTitle}" saved successfully! Title: ${showTitle ? 'Visible' : 'Hidden'}.`,
+        },
+      }));
+    } catch (err: any) {
+      console.error('[GalleryAdmin] Gallery card save error:', err);
+      setGalleryItemMessages((prev) => ({
+        ...prev,
+        [key]: {
+          type: 'error',
+          text: err.message || 'Failed to save gallery card.',
+        },
+      }));
+    } finally {
+      setUploadingGalleryKey(null);
+    }
+  };
+
+  const handleRemoveGalleryImage = async (item: ManagedGalleryItem) => {
+    const key = item.facility_key;
+    if (!window.confirm(`Are you sure you want to remove the image for "${item.title}"?`)) {
+      return;
+    }
+
+    setUploadingGalleryKey(key);
+    setGalleryItemMessages((prev) => ({ ...prev, [key]: null }));
+
+    try {
+      const cardTitle = galleryTitles[key]?.trim() || item.title || 'Gallery Moment';
+      const showTitle = galleryShowTitles[key] !== false;
+
+      const res = await saveGalleryItem({
+        facility_key: key,
+        title: cardTitle,
+        image_url: null,
+        display_order: item.display_order,
+        page_section: 'gallery',
+        show_title: showTitle,
+        updated_by: currentUserEmail || 'Admin',
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to remove image.');
+      }
+
+      setGalleryPageItems((prev) =>
+        prev.map((it) => (it.facility_key === key ? { ...it, image_url: null } : it))
+      );
+      setSelectedGalleryFiles((prev) => ({ ...prev, [key]: null }));
+      setGalleryItemMessages((prev) => ({
+        ...prev,
+        [key]: {
+          type: 'success',
+          text: `Image removed for "${cardTitle}". Card remains on /gallery/.`,
+        },
+      }));
+    } catch (err: any) {
+      setGalleryItemMessages((prev) => ({
+        ...prev,
+        [key]: {
+          type: 'error',
+          text: err.message || 'Failed to remove image.',
+        },
+      }));
+    } finally {
+      setUploadingGalleryKey(null);
+    }
+  };
+
+  const handleDeleteGalleryCard = async (item: ManagedGalleryItem) => {
+    const key = item.facility_key;
+    if (!window.confirm(`Are you sure you want to permanently delete the card "${item.title}" from the Gallery page?`)) {
+      return;
+    }
+
+    setUploadingGalleryKey(key);
+    try {
+      await deleteGalleryItem(key, currentUserEmail || 'Admin');
+      const updated = galleryPageItems.filter((it) => it.facility_key !== key);
+      setGalleryPageItems(updated);
+
+      const orderedKeys = updated.map((it) => it.facility_key);
+      await updateGalleryOrders(orderedKeys, 'gallery', currentUserEmail || 'Admin');
+
+      setGalleryGlobalMessage({
+        type: 'success',
+        text: `Card "${item.title}" deleted from Gallery.`,
+      });
+    } catch (err: any) {
+      setGalleryGlobalMessage({
+        type: 'error',
+        text: err.message || 'Failed to delete gallery card.',
+      });
+    } finally {
+      setUploadingGalleryKey(null);
+    }
+  };
+
+  const handleAddNewGalleryCard = async () => {
+    const newKey = `gallery_${Date.now()}`;
+    const newOrder = galleryPageItems.length;
+    const newTitle = `Gallery Moment ${newOrder + 1}`;
+
+    const newItem: ManagedGalleryItem = {
+      facility_key: newKey,
+      title: newTitle,
+      image_url: null,
+      display_order: newOrder,
+      page_section: 'gallery',
+      show_title: true,
+    };
+
+    const updated = [...galleryPageItems, newItem];
+    setGalleryPageItems(updated);
+    setGalleryTitles((prev) => ({ ...prev, [newKey]: newTitle }));
+    setGalleryShowTitles((prev) => ({ ...prev, [newKey]: true }));
+
+    await saveGalleryItem(newItem);
+    setGalleryGlobalMessage({
+      type: 'success',
+      text: `New Gallery card "${newTitle}" created! You can now upload an image and edit its title.`,
+    });
+  };
+
+  const handleGalleryDragStart = (e: React.DragEvent, index: number) => {
+    setGalleryDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleGalleryDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (galleryDragIndex === null || galleryDragIndex === index) return;
+    setGalleryDragOverIndex(index);
+  };
+
+  const handleGalleryDragEnd = () => {
+    setGalleryDragIndex(null);
+    setGalleryDragOverIndex(null);
+  };
+
+  const handleGalleryDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (galleryDragIndex === null || galleryDragIndex === dropIndex) {
+      handleGalleryDragEnd();
+      return;
+    }
+
+    const prevList = [...galleryPageItems];
+    const updated = [...galleryPageItems];
+    const [draggedItem] = updated.splice(galleryDragIndex, 1);
+    updated.splice(dropIndex, 0, draggedItem);
+
+    setGalleryPageItems(updated);
+    handleGalleryDragEnd();
+
+    setIsReorderingGallery(true);
+    setGalleryGlobalMessage(null);
+
+    const orderedKeys = updated.map((c) => c.facility_key);
+    const result = await updateGalleryOrders(orderedKeys, 'gallery', currentUserEmail || 'Admin');
+    setIsReorderingGallery(false);
+
+    if (!result.success) {
+      setGalleryPageItems(prevList);
+      setGalleryGlobalMessage({
+        type: 'error',
+        text: `Failed to save display order: ${result.error}. Previous order restored.`,
+      });
+    } else {
+      setGalleryGlobalMessage({
+        type: 'success',
+        text: 'Gallery moments display sequence updated and saved to Supabase!',
+      });
+    }
+  };
+
+  const handleGalleryMoveOrder = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= galleryPageItems.length) return;
+
+    const prevList = [...galleryPageItems];
+    const updated = [...galleryPageItems];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+
+    setGalleryPageItems(updated);
+    setIsReorderingGallery(true);
+    setGalleryGlobalMessage(null);
+
+    const orderedKeys = updated.map((c) => c.facility_key);
+    const result = await updateGalleryOrders(orderedKeys, 'gallery', currentUserEmail || 'Admin');
+    setIsReorderingGallery(false);
+
+    if (!result.success) {
+      setGalleryPageItems(prevList);
+      setGalleryGlobalMessage({
+        type: 'error',
+        text: `Failed to save display order: ${result.error}. Previous order restored.`,
+      });
+    } else {
+      setGalleryGlobalMessage({
+        type: 'success',
+        text: 'Gallery moments display sequence updated and saved to Supabase!',
+      });
+    }
+  };
+
+  // Image Set Management Handlers
+  const handleOpenManageSet = async (card: ManagedGalleryItem) => {
+    if (!card || !card.facility_key) {
+      console.error('[ManageImageSet] Invalid card passed to handleOpenManageSet:', card);
+      return;
+    }
+
+    setManagingSetCard(card);
+    setSetModalMessage(null);
+    setDeleteConfirmImageId(null);
+    setSetImagesFetchError(null);
+    setSetImagesLoading(true);
+
+    const existing = Array.isArray(galleryCardSets?.[card.facility_key])
+      ? galleryCardSets[card.facility_key]
+      : [];
+    setSetImagesList(existing);
+
+    // Refresh fresh from Supabase with safe error handling
+    try {
+      const res = await fetchGalleryCardImages(card.facility_key);
+      if (res.error) {
+        setSetImagesFetchError(res.error);
+      } else {
+        const safeData = Array.isArray(res.data) ? res.data : [];
+        setSetImagesList(safeData);
+        setGalleryCardSets((prev) => ({ ...(prev || {}), [card.facility_key]: safeData }));
+      }
+    } catch (err: any) {
+      console.error('[ManageImageSet] Exception fetching fresh set images:', err);
+      setSetImagesFetchError(err?.message || 'Failed to connect to database.');
+    } finally {
+      setSetImagesLoading(false);
+    }
+  };
+
+  const handleRetryFetchImages = async () => {
+    if (!managingSetCard?.facility_key) return;
+    setSetImagesLoading(true);
+    setSetImagesFetchError(null);
+    try {
+      const res = await fetchGalleryCardImages(managingSetCard.facility_key);
+      if (res.error) {
+        setSetImagesFetchError(res.error);
+      } else {
+        const safeData = Array.isArray(res.data) ? res.data : [];
+        setSetImagesList(safeData);
+        setGalleryCardSets((prev) => ({ ...(prev || {}), [managingSetCard.facility_key]: safeData }));
+      }
+    } catch (err: any) {
+      setSetImagesFetchError(err?.message || 'Retry failed.');
+    } finally {
+      setSetImagesLoading(false);
+    }
+  };
+
+  const handleCloseManageSet = () => {
+    setManagingSetCard(null);
+    setSetModalMessage(null);
+    setDeleteConfirmImageId(null);
+    setSetImagesFetchError(null);
+    setSetImagesLoading(false);
+  };
+
+  // Lock body scroll and listen for Escape key when managingSetCard modal is open
+  useEffect(() => {
+    if (!managingSetCard) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseManageSet();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [managingSetCard]);
+
+  const handleUploadMultipleSetImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !managingSetCard) return;
+
+    setSetModalUploading(true);
+    setSetModalMessage(null);
+    const cardKey = managingSetCard.facility_key;
+    const fileList = Array.from(files);
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setSetUploadProgress(`Uploading ${i + 1} of ${fileList.length} (${file.name})...`);
+
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`File "${file.name}" exceeds the 5 MB maximum size limit.`);
+        }
+
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+        const timestamp = Date.now();
+        const storagePath = `gallery-set-${cardKey}-${timestamp}-${i}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('site-banners')
+          .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+
+        if (uploadError) {
+          throw new Error(`Upload failed for ${file.name}: ${uploadError.message}`);
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('site-banners')
+          .getPublicUrl(storagePath);
+
+        if (!publicUrlData?.publicUrl) {
+          throw new Error(`Failed to resolve public URL for ${file.name}.`);
+        }
+
+        uploadedUrls.push(publicUrlData.publicUrl);
+      }
+
+      setSetUploadProgress('Saving photos to gallery collection...');
+      const saveRes = await addImagesToGallerySet(cardKey, uploadedUrls, currentUserEmail || 'Admin');
+
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || 'Failed to save photos to database.');
+      }
+
+      const fresh = await getGalleryCardImages(cardKey);
+      setSetImagesList(fresh);
+      setGalleryCardSets((prev) => ({ ...prev, [cardKey]: fresh }));
+      setSetModalMessage({
+        type: 'success',
+        text: `Successfully added ${uploadedUrls.length} photo(s) to "${managingSetCard.title}".`,
+      });
+    } catch (err: any) {
+      setSetModalMessage({
+        type: 'error',
+        text: err?.message || 'Failed to upload photo set.',
+      });
+    } finally {
+      setSetModalUploading(false);
+      setSetUploadProgress(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleReplaceSetImage = async (imageId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !managingSetCard) return;
+
+    setSetModalUploading(true);
+    setSetModalMessage(null);
+    const cardKey = managingSetCard.facility_key;
+
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error(`File "${file.name}" exceeds the 5 MB maximum size limit.`);
+      }
+
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const timestamp = Date.now();
+      const storagePath = `gallery-set-${cardKey}-${timestamp}-replaced.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('site-banners')
+        .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: publicUrlData } = supabase.storage
+        .from('site-banners')
+        .getPublicUrl(storagePath);
+
+      if (!publicUrlData?.publicUrl) throw new Error('Failed to resolve image URL.');
+
+      const replaceRes = await replaceGallerySetImage(imageId, publicUrlData.publicUrl, currentUserEmail || 'Admin');
+      if (!replaceRes.success) throw new Error(replaceRes.error);
+
+      const fresh = await getGalleryCardImages(cardKey);
+      setSetImagesList(fresh);
+      setGalleryCardSets((prev) => ({ ...prev, [cardKey]: fresh }));
+      setSetModalMessage({ type: 'success', text: 'Photo replaced successfully.' });
+    } catch (err: any) {
+      setSetModalMessage({ type: 'error', text: err?.message || 'Failed to replace photo.' });
+    } finally {
+      setSetModalUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteSetImage = async (imageId: string) => {
+    if (!managingSetCard) return;
+    const cardKey = managingSetCard.facility_key;
+
+    try {
+      const res = await deleteGallerySetImage(imageId);
+      if (!res.success) throw new Error(res.error);
+
+      const fresh = await getGalleryCardImages(cardKey);
+      setSetImagesList(fresh);
+      setGalleryCardSets((prev) => ({ ...prev, [cardKey]: fresh }));
+      setDeleteConfirmImageId(null);
+      setSetModalMessage({ type: 'success', text: 'Photo removed from set.' });
+    } catch (err: any) {
+      setSetModalMessage({ type: 'error', text: err?.message || 'Failed to remove photo.' });
+    }
+  };
+
+  const handleMoveSetImage = async (index: number, direction: 'up' | 'down') => {
+    if (!managingSetCard) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= setImagesList.length) return;
+
+    const copy = [...setImagesList];
+    const [moved] = copy.splice(index, 1);
+    copy.splice(targetIndex, 0, moved);
+    setSetImagesList(copy);
+
+    const cardKey = managingSetCard.facility_key;
+    const res = await updateGallerySetImageOrder(cardKey, copy.map((c) => c.id), currentUserEmail || 'Admin');
+    if (res.success) {
+      setGalleryCardSets((prev) => ({ ...prev, [cardKey]: copy }));
+    }
+  };
+
 
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
@@ -1414,7 +2366,8 @@ export const SchoolOfficeAdmin: React.FC = () => {
   // Authenticated School Office Admin Panel
   // ============================================================================
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row text-slate-800">
+    <AdminErrorBoundary>
+      <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row text-slate-800">
       
       {/* Mobile Top Bar */}
       <header className="md:hidden bg-[#07172C] text-white px-4 py-3 flex items-center justify-between border-b-2 border-[#C59B27] sticky top-0 z-40">
@@ -3023,61 +3976,109 @@ export const SchoolOfficeAdmin: React.FC = () => {
           </div>
         )}
 
-        {/* 5. Facilities Gallery Management Section */}
+        {/* 5. Comprehensive Gallery Management Section (Facilities, Infrastructure, and Gallery Page) */}
         {activeTab === 'gallery' && (
           <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-            {/* Header */}
+            {/* Main Header */}
             <div className="bg-white border border-slate-200 p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 bg-[#C59B27] inline-block" />
                   <h2 className="text-xl sm:text-2xl font-serif font-black text-[#0B2545]">
-                    Facilities Gallery &amp; Card Images
+                    Gallery &amp; Image Management
                   </h2>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                  Manage photography and custom display sequence for the four primary facility cards on{' '}
-                  <span className="font-semibold text-[#0B2545]">/facilities/</span>.
+                  Manage photography, editable titles, visibility, and display sequence for Facilities, Campus Infrastructure, and the public Gallery page.
                 </p>
               </div>
 
               <div className="flex items-center gap-2.5 shrink-0">
                 <button
                   type="button"
-                  onClick={loadFacilityImages}
-                  disabled={facilityImagesLoading || isReorderingFacilities}
+                  onClick={() => {
+                    loadFacilityImages();
+                    loadInfraImage();
+                    loadGalleryPageItems();
+                  }}
+                  disabled={facilityImagesLoading || infraLoading || galleryPageLoading || isReorderingFacilities || isReorderingGallery}
                   className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-                  title="Reload images & order from Supabase"
+                  title="Reload images, titles, and order from Supabase"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${facilityImagesLoading ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${facilityImagesLoading || infraLoading || galleryPageLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh All</span>
                 </button>
                 <a
-                  href="/facilities/"
+                  href={
+                    gallerySubTab === 'facilities'
+                      ? '/facilities/'
+                      : gallerySubTab === 'infrastructure'
+                      ? '/about/infrastructure/'
+                      : '/gallery/'
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold transition-colors shadow-xs"
                 >
-                  <span>View Public Page</span>
+                  <span>
+                    View{' '}
+                    {gallerySubTab === 'facilities'
+                      ? 'Facilities'
+                      : gallerySubTab === 'infrastructure'
+                      ? 'Infrastructure'
+                      : 'Gallery'}{' '}
+                    Page
+                  </span>
                   <ExternalLink className="w-3.5 h-3.5 text-[#C59B27]" />
                 </a>
               </div>
             </div>
 
-            {/* Reorder instructions & status bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 p-3.5 px-4 text-xs">
-              <div className="flex items-center gap-2 text-slate-600">
-                <GripVertical className="w-4 h-4 text-[#C59B27] shrink-0" />
-                <span>
-                  <strong>Sequence Control:</strong> Drag the 6-dot handle (:::) on any card or use the Move Up / Down buttons to reorder the 2×2 grid. Changes sync live to <code className="text-[#0B2545] bg-slate-100 px-1 py-0.5 font-bold">/facilities/</code>.
+            {/* Sub-Section Navigation Tabs */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
+              <button
+                type="button"
+                onClick={() => setGallerySubTab('facilities')}
+                className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-md transition-all flex items-center gap-2 cursor-pointer ${
+                  gallerySubTab === 'facilities'
+                    ? 'bg-[#0B2545] text-[#F6D55C] shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span>1. Facilities Cards (/facilities/)</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 font-bold">4 Cards</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGallerySubTab('infrastructure')}
+                className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-md transition-all flex items-center gap-2 cursor-pointer ${
+                  gallerySubTab === 'infrastructure'
+                    ? 'bg-[#0B2545] text-[#F6D55C] shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                <span>2. Campus Infrastructure (/about/infrastructure/)</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 font-bold">1 Frame</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGallerySubTab('gallery')}
+                className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-t-md transition-all flex items-center gap-2 cursor-pointer ${
+                  gallerySubTab === 'gallery'
+                    ? 'bg-[#0B2545] text-[#F6D55C] shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>3. Gallery Page (/gallery/)</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 font-bold">
+                  {galleryPageItems.length} Cards
                 </span>
-              </div>
-              {isReorderingFacilities && (
-                <div className="flex items-center gap-1.5 text-[#0B2545] font-bold shrink-0">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
-                  <span>Saving sequence...</span>
-                </div>
-              )}
+              </button>
             </div>
 
             {/* Global success / error message */}
@@ -3098,267 +4099,1191 @@ export const SchoolOfficeAdmin: React.FC = () => {
               </div>
             )}
 
-            {/* 2x2 Grid of the 4 Facility Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {orderedFacilityCards.map((card, idx) => {
-                const currentSavedUrl = facilityImages[card.key];
-                const selectedFile = selectedFacilityFiles[card.key];
-                const isUploading = uploadingFacilityKey === card.key;
-                const message = facilityMessages[card.key];
-                const fileInputId = `facility-input-${card.key}`;
-                const isDragged = facilityDragIndex === idx;
-                const isDragOver = facilityDragOverIndex === idx;
-
-                return (
-                  <div
-                    key={card.key}
-                    draggable
-                    onDragStart={(e) => handleFacilityDragStart(e, idx)}
-                    onDragOver={(e) => handleFacilityDragOver(e, idx)}
-                    onDragEnd={handleFacilityDragEnd}
-                    onDrop={(e) => handleFacilityDrop(e, idx)}
-                    className={`bg-white border shadow-sm flex flex-col justify-between transition-all duration-150 ${
-                      isDragOver
-                        ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
-                        : isDragged
-                        ? 'opacity-40 border-dashed border-[#0B2545]'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    {/* Card Top Header with 6-dot drag handle, Position, Move Buttons & Status */}
-                    <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
-                      <div className="flex items-center gap-2.5">
-                        {/* 2x3 Drag Handle (6 dots) */}
-                        <div
-                          className="cursor-grab active:cursor-grabbing p-1.5 text-slate-400 hover:text-[#0B2545] hover:bg-slate-200/70 rounded transition-colors touch-none select-none"
-                          title="Drag 6-dot handle to reorder card sequence"
-                          aria-label="Drag handle to reorder"
-                        >
-                          <GripVertical className="w-5 h-5 text-slate-500" />
-                        </div>
-
-                        {/* Position Badge */}
-                        <span className="px-2 py-0.5 bg-[#0B2545] text-white font-black text-xs uppercase tracking-wider rounded">
-                          #{idx + 1}
-                        </span>
-
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-slate-900 text-sm font-serif">
-                              {card.title}
-                            </h3>
-                            <span className="text-[10px] text-slate-400 font-mono bg-white px-1.5 py-0.5 border border-slate-200 rounded">
-                              ID: {card.key}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right side: Move Up / Down Buttons & Published Badge */}
-                      <div className="flex items-center gap-2">
-                        {/* Move Up Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleFacilityMoveOrder(idx, 'up')}
-                          disabled={idx === 0 || isReorderingFacilities}
-                          className="p-1.5 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
-                          title="Move card earlier in sequence"
-                          aria-label={`Move ${card.title} up`}
-                        >
-                          <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Move Down Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleFacilityMoveOrder(idx, 'down')}
-                          disabled={idx === orderedFacilityCards.length - 1 || isReorderingFacilities}
-                          className="p-1.5 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
-                          title="Move card later in sequence"
-                          aria-label={`Move ${card.title} down`}
-                        >
-                          <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-
-                        {currentSavedUrl ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Image Published</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
-                            <AlertTriangle className="w-3 h-3 text-amber-600" />
-                            <span>Empty Frame</span>
-                          </span>
-                        )}
-                      </div>
+            {/* ============================================================= */}
+            {/* SUB-SECTION 1: Facilities Cards Management                     */}
+            {/* ============================================================= */}
+            {gallerySubTab === 'facilities' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Reorder instructions & status bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 p-3.5 px-4 text-xs">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <GripVertical className="w-4 h-4 text-[#C59B27] shrink-0" />
+                    <span>
+                      <strong>Sequence Control:</strong> Drag the 6-dot handle (:::) on any card or use the Move Up / Down buttons to reorder the 2×2 grid. Changes sync live to <code className="text-[#0B2545] bg-slate-100 px-1 py-0.5 font-bold">/facilities/</code>.
+                    </span>
+                  </div>
+                  {isReorderingFacilities && (
+                    <div className="flex items-center gap-1.5 text-[#0B2545] font-bold shrink-0">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
+                      <span>Saving sequence...</span>
                     </div>
+                  )}
+                </div>
 
-                    {/* Image Preview Frame (16:9 Aspect Ratio) */}
-                    <div className="relative aspect-[16/9] bg-slate-100 border-b border-slate-200 overflow-hidden flex items-center justify-center">
-                      {selectedFile ? (
-                        <>
-                          <img
-                            src={selectedFile.previewUrl}
-                            alt={`Preview for ${card.title}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-2 right-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                            Pending Save: {selectedFile.width}×{selectedFile.height} ({selectedFile.sizeKb} KB)
-                          </div>
-                        </>
-                      ) : currentSavedUrl ? (
-                        <>
-                          <img
-                            src={currentSavedUrl}
-                            alt={card.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-2 right-2 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[9.5px] font-bold px-2 py-0.5 rounded shadow">
-                            Active Image
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center p-6 text-slate-400">
-                          <ImageIcon className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-1" />
-                          <p className="text-xs font-semibold text-slate-500">No image uploaded</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            This card currently displays an empty placeholder frame on the public page.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+                {/* 2x2 Grid of the 4 Facility Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {orderedFacilityCards.map((card, idx) => {
+                    const currentSavedUrl = facilityImages[card.key];
+                    const selectedFile = selectedFacilityFiles[card.key];
+                    const isUploading = uploadingFacilityKey === card.key;
+                    const message = facilityMessages[card.key];
+                    const fileInputId = `facility-input-${card.key}`;
+                    const isDragged = facilityDragIndex === idx;
+                    const isDragOver = facilityDragOverIndex === idx;
+                    const cardTitle = facilityTitles[card.key] ?? card.title;
+                    const showTitle = facilityShowTitles[card.key] !== false;
 
-                    {/* Card Content Summary */}
-                    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
-                      <div>
-                        <p className="text-xs text-slate-600 leading-relaxed">
-                          {card.desc}
-                        </p>
-                        <div className="pt-2 flex flex-wrap gap-1.5 mt-2">
-                          {card.tags.map((t) => (
-                            <span
-                              key={t}
-                              className="text-[9.5px] font-bold text-[#0B2545] bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider"
+                    return (
+                      <div
+                        key={card.key}
+                        draggable
+                        onDragStart={(e) => handleFacilityDragStart(e, idx)}
+                        onDragOver={(e) => handleFacilityDragOver(e, idx)}
+                        onDragEnd={handleFacilityDragEnd}
+                        onDrop={(e) => handleFacilityDrop(e, idx)}
+                        className={`bg-white border shadow-sm flex flex-col justify-between transition-all duration-150 ${
+                          isDragOver
+                            ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
+                            : isDragged
+                            ? 'opacity-40 border-dashed border-[#0B2545]'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {/* Card Top Header */}
+                        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="cursor-grab active:cursor-grabbing p-1.5 text-slate-400 hover:text-[#0B2545] hover:bg-slate-200/70 rounded transition-colors touch-none select-none"
+                              title="Drag 6-dot handle to reorder card sequence"
+                              aria-label="Drag handle to reorder"
                             >
-                              {t}
+                              <GripVertical className="w-5 h-5 text-slate-500" />
+                            </div>
+
+                            <span className="px-2 py-0.5 bg-[#0B2545] text-white font-black text-xs uppercase tracking-wider rounded">
+                              #{idx + 1}
                             </span>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* Card Notification */}
-                      {message && (
-                        <div
-                          className={`p-2.5 text-xs rounded border flex items-start gap-2 ${
-                            message.type === 'success'
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                              : 'bg-rose-50 border-rose-200 text-rose-800'
-                          }`}
-                        >
-                          {message.type === 'success' ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                          ) : (
-                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                          )}
-                          <span className="flex-1 font-medium">{message.text}</span>
-                        </div>
-                      )}
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-bold text-slate-900 text-sm font-serif">
+                                  {cardTitle || card.title}
+                                </h3>
+                                <span className="text-[10px] text-slate-400 font-mono bg-white px-1.5 py-0.5 border border-slate-200 rounded">
+                                  ID: {card.key}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
 
-                      {/* Actions Area */}
-                      <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                        {/* Hidden File Input */}
-                        <input
-                          id={fileInputId}
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          className="hidden"
-                          onChange={(e) => handleSelectFacilityImage(card.key, e)}
-                        />
-
-                        {selectedFile ? (
-                          // File Selected: Save & Publish or Cancel
-                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                          {/* Move Up / Down Buttons & Published Badge */}
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              disabled={isUploading}
-                              onClick={() => handleUploadFacilityImage(card)}
-                              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                              onClick={() => handleFacilityMoveOrder(idx, 'up')}
+                              disabled={idx === 0 || isReorderingFacilities}
+                              className="p-1.5 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
+                              title="Move card earlier in sequence"
+                              aria-label={`Move ${card.title} up`}
                             >
-                              {isUploading ? (
-                                <>
-                                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
-                                  <span>Uploading...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Save className="w-3.5 h-3.5 text-[#C59B27]" />
-                                  <span>Save &amp; Publish Image</span>
-                                </>
-                              )}
+                              <ArrowUp className="w-3.5 h-3.5" />
                             </button>
+
                             <button
                               type="button"
-                              disabled={isUploading}
-                              onClick={() => handleCancelFacilitySelect(card.key)}
-                              className="px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                              onClick={() => handleFacilityMoveOrder(idx, 'down')}
+                              disabled={idx === orderedFacilityCards.length - 1 || isReorderingFacilities}
+                              className="p-1.5 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
+                              title="Move card later in sequence"
+                              aria-label={`Move ${card.title} down`}
                             >
-                              Cancel
+                              <ArrowDown className="w-3.5 h-3.5" />
                             </button>
-                          </div>
-                        ) : (
-                          // Normal state: Upload / Change Image & Remove Image
-                          <div className="flex items-center justify-between w-full">
-                            <label
-                              htmlFor={fileInputId}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] text-xs font-bold rounded transition-colors cursor-pointer"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              <span>{currentSavedUrl ? 'Change Image' : 'Upload Image'}</span>
-                            </label>
 
-                            {currentSavedUrl && (
-                              <button
-                                type="button"
-                                disabled={isUploading}
-                                onClick={() => handleRemoveFacilityImage(card)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                                title="Remove image and reset to empty frame"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Remove Image</span>
-                              </button>
+                            {currentSavedUrl ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Image Published</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                                <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                <span>Empty Frame</span>
+                              </span>
                             )}
                           </div>
-                        )}
+                        </div>
+
+                        {/* Image Preview Frame (16:9 Aspect Ratio) */}
+                        <div className="relative aspect-[16/9] bg-slate-100 border-b border-slate-200 overflow-hidden flex items-center justify-center">
+                          {selectedFile ? (
+                            <>
+                              <img
+                                src={selectedFile.previewUrl}
+                                alt={`Preview for ${cardTitle}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-2 right-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                                Pending Save: {selectedFile.width}×{selectedFile.height} ({selectedFile.sizeKb} KB)
+                              </div>
+                            </>
+                          ) : currentSavedUrl ? (
+                            <>
+                              <img
+                                src={currentSavedUrl}
+                                alt={cardTitle}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-2 right-2 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[9.5px] font-bold px-2 py-0.5 rounded shadow">
+                                Active Image
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-center p-6 text-slate-400">
+                              <ImageIcon className="w-10 h-10 mx-auto mb-2 text-slate-300 stroke-1" />
+                              <p className="text-xs font-semibold text-slate-500">No image uploaded</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                This card displays an empty placeholder frame on /facilities/.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title Editing & Visibility Control Block */}
+                        <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                          <div className="space-y-3 bg-slate-50/70 p-3.5 rounded border border-slate-200">
+                            <div className="flex items-center justify-between gap-2">
+                              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                                Card Title:
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFacilityShowTitles((prev) => ({
+                                    ...prev,
+                                    [card.key]: !showTitle,
+                                  }))
+                                }
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded transition-colors cursor-pointer ${
+                                  showTitle
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                }`}
+                                title={showTitle ? 'Click to hide title on website' : 'Click to show title on website'}
+                              >
+                                {showTitle ? (
+                                  <>
+                                    <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                                    <span>Show title (Visible)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <EyeOff className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Hide title (Hidden)</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={cardTitle}
+                              onChange={(e) =>
+                                setFacilityTitles((prev) => ({
+                                  ...prev,
+                                  [card.key]: e.target.value,
+                                }))
+                              }
+                              placeholder="Enter custom card title"
+                              className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#C59B27]"
+                            />
+                            <p className="text-[10.5px] text-slate-500">
+                              {showTitle
+                                ? 'Title is rendered above the card description on the public page.'
+                                : 'Title is suppressed on the public page. The description & image remain intact.'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                              {card.desc}
+                            </p>
+                            <div className="pt-2 flex flex-wrap gap-1.5 mt-2">
+                              {card.tags.map((t) => (
+                                <span
+                                  key={t}
+                                  className="text-[9.5px] font-bold text-[#0B2545] bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Card Notification */}
+                          {message && (
+                            <div
+                              className={`p-2.5 text-xs rounded border flex items-start gap-2 ${
+                                message.type === 'success'
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                  : 'bg-rose-50 border-rose-200 text-rose-800'
+                              }`}
+                            >
+                              {message.type === 'success' ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                              ) : (
+                                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                              )}
+                              <span className="flex-1 font-medium">{message.text}</span>
+                            </div>
+                          )}
+
+                          {/* Actions Area */}
+                          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <input
+                              id={fileInputId}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={(e) => handleSelectFacilityImage(card.key, e)}
+                            />
+
+                            {selectedFile ? (
+                              <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <button
+                                  type="button"
+                                  disabled={isUploading}
+                                  onClick={() => handleUploadFacilityImage(card)}
+                                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                                >
+                                  {isUploading ? (
+                                    <>
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
+                                      <span>Saving...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="w-3.5 h-3.5 text-[#C59B27]" />
+                                      <span>Save &amp; Publish Image</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isUploading}
+                                  onClick={() => handleCancelFacilitySelect(card.key)}
+                                  className="px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <div className="flex items-center gap-2">
+                                  <label
+                                    htmlFor={fileInputId}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] text-xs font-bold rounded transition-colors cursor-pointer"
+                                  >
+                                    <Upload className="w-3.5 h-3.5" />
+                                    <span>{currentSavedUrl ? 'Change Image' : 'Upload Image'}</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    disabled={isUploading}
+                                    onClick={() => handleSaveFacilitySettings(card)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded transition-colors cursor-pointer"
+                                    title="Save title and visibility settings to Supabase"
+                                  >
+                                    <Save className="w-3.5 h-3.5 text-[#C59B27]" />
+                                    <span>Save Title</span>
+                                  </button>
+                                </div>
+
+                                {currentSavedUrl && (
+                                  <button
+                                    type="button"
+                                    disabled={isUploading}
+                                    onClick={() => handleRemoveFacilityImage(card)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                    title="Remove image and reset to empty frame"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Remove Image</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================= */}
+            {/* SUB-SECTION 2: Campus Infrastructure Image Frame Management   */}
+            {/* ============================================================= */}
+            {gallerySubTab === 'infrastructure' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Important Distinguishing Banner */}
+                <div className="bg-amber-50/70 border border-amber-200 p-4 rounded text-xs text-amber-900 flex items-start gap-3">
+                  <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">
+                      Campus Infrastructure Photo Frame (1536 × 1024, 3:2 Aspect Ratio)
+                    </p>
+                    <p className="text-amber-800 leading-relaxed">
+                      This controls the primary campus photography frame displayed on{' '}
+                      <span className="font-semibold underline">/about/infrastructure/</span> below the breadcrumbs and page heading.
+                      <strong className="block text-amber-950 mt-1">
+                        Note: This is completely separate from the top hero banner managed under the Banners tab.
+                      </strong>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Infrastructure Image Card */}
+                <div className="bg-white border border-slate-200 shadow-sm p-6 max-w-4xl mx-auto space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                      <h3 className="text-lg font-bold font-serif text-[#0B2545]">
+                        Campus Infrastructure Frame Configuration
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Upload high-resolution photography. The frame displays with an aspect ratio of 3:2 (max 1536 × 1024 px on desktop).
+                      </p>
+                    </div>
+
+                    {infraItem?.image_url ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Active Image Published</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <span>Empty Placeholder Active</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Preview Frame: 3:2 Aspect Ratio matching frontend */}
+                  <div className="relative aspect-[3/2] w-full max-w-2xl mx-auto bg-slate-100 border-2 border-slate-200 rounded-2xl overflow-hidden flex items-center justify-center shadow-inner">
+                    {infraSelectedFile ? (
+                      <>
+                        <img
+                          src={infraSelectedFile.previewUrl}
+                          alt="Pending Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-3 right-3 bg-black/80 text-white text-xs font-bold px-3 py-1 rounded shadow">
+                          Pending Save: {infraSelectedFile.width}×{infraSelectedFile.height} ({infraSelectedFile.sizeKb} KB)
+                        </div>
+                      </>
+                    ) : infraItem?.image_url ? (
+                      <>
+                        <img
+                          src={infraItem.image_url}
+                          alt={infraTitle}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute top-3 right-3 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-xs font-bold px-3 py-1 rounded shadow">
+                          Current Active Image
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center p-8 text-slate-400">
+                        <ImageIcon className="w-12 h-12 mx-auto mb-2 text-slate-300 stroke-1" />
+                        <p className="text-sm font-semibold text-slate-600">No Image Uploaded Yet</p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                          The infrastructure page currently displays an empty placeholder frame with the title badge.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Live Preview of Title Badge */}
+                    {infraShowTitle && infraTitle && (
+                      <div className="absolute bottom-4 left-4 z-10">
+                        <span className="inline-block bg-[#0B2545] text-[#F6D55C] font-black text-xs uppercase px-3 py-1.5 rounded-lg shadow tracking-wider">
+                          {infraTitle}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Title & Visibility Controls */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Infrastructure Image Title / Badge Label:
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => setInfraShowTitle((prev) => !prev)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded transition-colors cursor-pointer ${
+                          infraShowTitle
+                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                            : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        }`}
+                        title={infraShowTitle ? 'Click to hide badge on page' : 'Click to show badge on page'}
+                      >
+                        {infraShowTitle ? (
+                          <>
+                            <Eye className="w-4 h-4 text-emerald-600" />
+                            <span>Show Title Badge (Visible)</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-4 h-4 text-amber-600" />
+                            <span>Hide Title Badge (Hidden)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={infraTitle}
+                      onChange={(e) => setInfraTitle(e.target.value)}
+                      placeholder="e.g. CAMPUS INFRASTRUCTURE"
+                      className="w-full px-3.5 py-2 text-sm bg-white border border-slate-300 rounded font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#C59B27]"
+                    />
+
+                    <p className="text-xs text-slate-500">
+                      {infraShowTitle
+                        ? 'The yellow/navy badge is displayed in the bottom-left corner of the campus frame.'
+                        : 'The title badge is hidden. The campus image spans the entire frame cleanly.'}
+                    </p>
+                  </div>
+
+                  {/* Feedback Message */}
+                  {infraMessage && (
+                    <div
+                      className={`p-3 text-xs rounded border flex items-start gap-2 ${
+                        infraMessage.type === 'success'
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}
+                    >
+                      {infraMessage.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      )}
+                      <span className="flex-1 font-semibold">{infraMessage.text}</span>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
+                    <input
+                      id="infra-file-input"
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={handleSelectInfraImage}
+                    />
+
+                    <div className="flex items-center gap-2.5">
+                      <label
+                        htmlFor="infra-file-input"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] text-xs font-bold rounded transition-colors cursor-pointer"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>{infraItem?.image_url ? 'Choose Replacement Image' : 'Select Photo to Upload'}</span>
+                      </label>
+
+                      {infraSelectedFile && (
+                        <button
+                          type="button"
+                          onClick={handleCancelInfraSelect}
+                          className="px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold rounded transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      {infraItem?.image_url && (
+                        <button
+                          type="button"
+                          disabled={infraUploading}
+                          onClick={handleRemoveInfraImage}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Remove Image</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={infraUploading}
+                        onClick={handleSaveInfraImage}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded shadow-sm transition-colors cursor-pointer"
+                      >
+                        {infraUploading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin text-[#C59B27]" />
+                            <span>Saving Infrastructure...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 text-[#C59B27]" />
+                            <span>Save Infrastructure Settings</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Note & Guidelines footer */}
-            <div className="bg-slate-50 border border-slate-200 rounded p-4 text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-[#0B2545] shrink-0" />
-                <span>
-                  <strong>Tip:</strong> Card order is reflected directly in the 2×2 grid on the public page. Upload horizontal photography in 16:9 ratio (e.g. 1280×720 or 1920×1080). JPG, PNG, and WebP up to 5 MB are supported.
-                </span>
+                </div>
               </div>
-              <a
-                href="/facilities/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 font-bold text-[#0B2545] hover:text-[#C59B27] underline"
-              >
-                Inspect /facilities/ &rarr;
-              </a>
-            </div>
+            )}
+
+            {/* ============================================================= */}
+            {/* SUB-SECTION 3: Public Gallery Page (/gallery/) Management    */}
+            {/* ============================================================= */}
+            {gallerySubTab === 'gallery' && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Header bar with Add Card action */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 p-4">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm font-serif">
+                      Public Gallery Moments Cards (/gallery/)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Manage photo cards and full-resolution lightbox moments. Drag the 6-dot handle or use arrows to reorder.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleAddNewGalleryCard}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] font-bold text-xs uppercase rounded shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Gallery Card</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reorder Status */}
+                {isReorderingGallery && (
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#C59B27]" />
+                    <span>Saving new card sequence to Supabase...</span>
+                  </div>
+                )}
+
+                {/* 3-Column / Responsive Grid of Gallery Page Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {galleryPageItems.map((item, idx) => {
+                    const key = item.facility_key;
+                    const selected = selectedGalleryFiles[key];
+                    const isUploading = uploadingGalleryKey === key;
+                    const msg = galleryItemMessages[key];
+                    const fileInputId = `gallery-input-${key}`;
+                    const isDragged = galleryDragIndex === idx;
+                    const isDragOver = galleryDragOverIndex === idx;
+                    const cardTitle = galleryTitles[key] ?? item.title;
+                    const showTitle = galleryShowTitles[key] !== false;
+
+                    return (
+                      <div
+                        key={key}
+                        draggable
+                        onDragStart={(e) => handleGalleryDragStart(e, idx)}
+                        onDragOver={(e) => handleGalleryDragOver(e, idx)}
+                        onDragEnd={handleGalleryDragEnd}
+                        onDrop={(e) => handleGalleryDrop(e, idx)}
+                        className={`bg-white border shadow-sm flex flex-col justify-between transition-all duration-150 ${
+                          isDragOver
+                            ? 'border-[#C59B27] ring-2 ring-[#C59B27]/40 bg-amber-50/20'
+                            : isDragged
+                            ? 'opacity-40 border-dashed border-[#0B2545]'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        {/* Card Header with Drag Handle, Order Badge & Actions */}
+                        <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/80">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="cursor-grab active:cursor-grabbing p-1 text-slate-400 hover:text-[#0B2545] hover:bg-slate-200/70 rounded transition-colors touch-none select-none"
+                              title="Drag handle to reorder card sequence"
+                              aria-label="Drag handle to reorder"
+                            >
+                              <GripVertical className="w-4 h-4 text-slate-500" />
+                            </div>
+
+                            <span className="px-2 py-0.5 bg-[#0B2545] text-white font-black text-xs uppercase tracking-wider rounded">
+                              #{idx + 1}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleGalleryMoveOrder(idx, 'up')}
+                              disabled={idx === 0 || isReorderingGallery}
+                              className="p-1 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
+                              title="Move card earlier in sequence"
+                              aria-label="Move card up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleGalleryMoveOrder(idx, 'down')}
+                              disabled={idx === galleryPageItems.length - 1 || isReorderingGallery}
+                              className="p-1 border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 text-slate-600 transition-colors cursor-pointer rounded-xs"
+                              title="Move card later in sequence"
+                              aria-label="Move card down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGalleryCard(item)}
+                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Delete this gallery card completely"
+                              aria-label="Delete card"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Image Preview Frame (4:3 Aspect Ratio) */}
+                        <div className="relative aspect-[4/3] bg-slate-100 border-b border-slate-200 overflow-hidden flex items-center justify-center">
+                          {selected ? (
+                            <>
+                              <img
+                                src={selected.previewUrl}
+                                alt={`Preview for ${cardTitle}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-2 right-2 bg-black/80 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                                Pending: {selected.width}×{selected.height} ({selected.sizeKb} KB)
+                              </div>
+                            </>
+                          ) : item.image_url ? (
+                            <>
+                              <img
+                                src={item.image_url}
+                                alt={cardTitle}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-2 right-2 bg-emerald-950/80 text-emerald-200 border border-emerald-400/40 text-[9.5px] font-bold px-2 py-0.5 rounded shadow">
+                                Active Photo
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-center p-4 text-slate-400">
+                              <ImageIcon className="w-8 h-8 mx-auto mb-1.5 text-slate-300 stroke-1" />
+                              <p className="text-xs font-semibold text-slate-500">Empty Photo Card</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Displays as an empty frame on /gallery/.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Overlaid Title Preview (matching public page) */}
+                          {showTitle && cardTitle && (
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0B2545]/90 via-[#0B2545]/50 to-transparent pt-8 pb-3 px-4 flex flex-col justify-end pointer-events-none">
+                              <div className="w-6 h-0.5 bg-[#C59B27] mb-1.5" />
+                              <h4 className="text-white font-serif font-bold text-xs sm:text-sm tracking-wide leading-snug drop-shadow-sm truncate">
+                                {cardTitle}
+                              </h4>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Content & Controls */}
+                        <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                          {/* Title & Visibility */}
+                          <div className="space-y-2.5 bg-slate-50/70 p-3 rounded border border-slate-200">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <label className="text-[10.5px] font-bold uppercase tracking-wider text-slate-700">
+                                Card Title:
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setGalleryShowTitles((prev) => ({
+                                    ...prev,
+                                    [key]: !showTitle,
+                                  }))
+                                }
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold rounded transition-colors cursor-pointer ${
+                                  showTitle
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                                }`}
+                                title={showTitle ? 'Click to hide title on page' : 'Click to show title on page'}
+                              >
+                                {showTitle ? (
+                                  <>
+                                    <Eye className="w-3 h-3 text-emerald-600" />
+                                    <span>Show title</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <EyeOff className="w-3 h-3 text-amber-600" />
+                                    <span>Hide title</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            <input
+                              type="text"
+                              value={cardTitle}
+                              onChange={(e) =>
+                                setGalleryTitles((prev) => ({
+                                  ...prev,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                              placeholder="Enter title for card & lightbox"
+                              className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-300 rounded font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#C59B27]"
+                            />
+                          </div>
+
+                          {/* Image Set Indicator & Management Trigger */}
+                          <div className="flex items-center justify-between p-2.5 bg-amber-50/70 border border-amber-200/80 rounded">
+                            <div className="flex items-center gap-1.5 text-xs text-[#0B2545] font-semibold">
+                              <Images className="w-4 h-4 text-[#C59B27]" />
+                              <span>{(galleryCardSets[key] || []).length} photos in set</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenManageSet(item)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white text-[11px] font-bold rounded shadow-2xs transition-colors cursor-pointer"
+                              title="Manage all photos belonging to this card's lightbox collection"
+                            >
+                              <Images className="w-3.5 h-3.5 text-[#C59B27]" />
+                              <span>Manage Image Set</span>
+                            </button>
+                          </div>
+
+                          {/* Card Message */}
+                          {msg && (
+                            <div
+                              className={`p-2 text-[11px] rounded border flex items-start gap-1.5 ${
+                                msg.type === 'success'
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                  : 'bg-rose-50 border-rose-200 text-rose-800'
+                              }`}
+                            >
+                              {msg.type === 'success' ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                              ) : (
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                              )}
+                              <span className="flex-1 font-medium">{msg.text}</span>
+                            </div>
+                          )}
+
+                          {/* Actions Area */}
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <input
+                              id={fileInputId}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={(e) => handleSelectGalleryFile(key, e)}
+                            />
+
+                            {selected ? (
+                              <div className="flex items-center gap-2 w-full">
+                                <button
+                                  type="button"
+                                  disabled={isUploading}
+                                  onClick={() => handleSaveGalleryItem(item)}
+                                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded shadow-xs transition-colors cursor-pointer"
+                                >
+                                  {isUploading ? (
+                                    <>
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C59B27]" />
+                                      <span>Saving...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Save className="w-3.5 h-3.5 text-[#C59B27]" />
+                                      <span>Save &amp; Publish</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isUploading}
+                                  onClick={() => handleCancelGallerySelect(key)}
+                                  className="px-2.5 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-bold rounded transition-colors cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between w-full gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <label
+                                    htmlFor={fileInputId}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-[#C59B27] hover:text-[#0B2545] text-[#0B2545] text-[11px] font-bold rounded transition-colors cursor-pointer"
+                                  >
+                                    <Upload className="w-3 h-3" />
+                                    <span>{item.image_url ? 'Change Photo' : 'Upload Photo'}</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    disabled={isUploading}
+                                    onClick={() => handleSaveGalleryItem(item)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white text-[11px] font-bold rounded transition-colors cursor-pointer"
+                                    title="Save title & visibility settings"
+                                  >
+                                    <Save className="w-3 h-3 text-[#C59B27]" />
+                                    <span>Save</span>
+                                  </button>
+                                </div>
+
+                                {item.image_url && (
+                                  <button
+                                    type="button"
+                                    disabled={isUploading}
+                                    onClick={() => handleRemoveGalleryImage(item)}
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                    title="Remove photo from card"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Clear Photo</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bottom Add Card Button */}
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={handleAddNewGalleryCard}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-dashed border-slate-300 hover:border-[#0B2545] text-slate-700 hover:text-[#0B2545] text-xs font-bold uppercase rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-[#C59B27]" />
+                    <span>+ Add Another Gallery Card</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
 
+      {/* ============================================================= */}
+      {/* MANAGE IMAGE SET MODAL (Root Level Overlay, z-[100])           */}
+      {/* ============================================================= */}
+      {managingSetCard && (() => {
+        const safeCardKey = managingSetCard?.facility_key || '';
+        const safeCardTitle = galleryTitles[safeCardKey]?.trim() || managingSetCard?.title || safeCardKey || 'Gallery Card';
+        const safeImages = Array.isArray(setImagesList) ? setImagesList : [];
+
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Manage Image Set for ${safeCardTitle}`}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto"
+            onClick={handleCloseManageSet}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Images className="w-5 h-5 text-[#C59B27]" />
+                    <h3 className="font-bold text-base sm:text-lg font-serif">
+                      Manage Image Set: {safeCardTitle}
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#C59B27] text-[#0B2545] font-bold text-xs uppercase tracking-wider">
+                      {safeImages.length} Photos
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1">
+                    Upload multiple photos, reorder, replace, or remove individual images. These photos appear when visitors click this card on /gallery/.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseManageSet}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                  title="Close modal (Escape)"
+                  aria-label="Close modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Toolbar & Multi-Upload Bar */}
+              <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    id="multi-set-file-upload"
+                    type="file"
+                    multiple
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={setModalUploading || setImagesLoading}
+                    onChange={handleUploadMultipleSetImages}
+                  />
+                  <label
+                    htmlFor="multi-set-file-upload"
+                    className={`inline-flex items-center gap-2 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer ${
+                      setModalUploading || setImagesLoading ? 'opacity-50 pointer-events-none' : ''
+                    }`}
+                  >
+                    <Upload className="w-4 h-4 text-[#C59B27]" />
+                    <span>+ Upload Photos (Select Multiple)</span>
+                  </label>
+
+                  <span className="text-xs text-slate-500 hidden sm:inline">
+                    JPG, PNG, or WebP (max 5 MB each). Hold Shift or Ctrl to select multiple.
+                  </span>
+                </div>
+
+                <div className="text-xs font-bold text-slate-600">
+                  Card Identifier: <span className="text-[#0B2545] font-mono">{safeCardKey}</span>
+                </div>
+              </div>
+
+              {/* Upload Progress Bar */}
+              {setModalUploading && (
+                <div className="p-3 bg-blue-50 border-b border-blue-200 text-blue-900 text-xs font-bold flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#C59B27]" />
+                  <span>{setUploadProgress || 'Uploading and saving images to collection...'}</span>
+                </div>
+              )}
+
+              {/* Action Feedback Messages */}
+              {setModalMessage && (
+                <div
+                  className={`p-3 text-xs font-medium border-b flex items-center justify-between gap-2 ${
+                    setModalMessage.type === 'success'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {setModalMessage.type === 'success' ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    )}
+                    <span>{setModalMessage.text}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSetModalMessage(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                    aria-label="Dismiss message"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Main Content Area */}
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100/60 min-h-[300px]">
+                {setImagesLoading ? (
+                  <div className="py-16 text-center">
+                    <RefreshCw className="w-8 h-8 animate-spin text-[#C59B27] mx-auto mb-3" />
+                    <h4 className="font-bold text-slate-800 text-sm">Loading Image Set...</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Retrieving photos for {safeCardTitle} from Supabase.
+                    </p>
+                  </div>
+                ) : setImagesFetchError ? (
+                  <div className="py-12 px-4 border border-rose-200 rounded-xl bg-rose-50 text-center max-w-lg mx-auto">
+                    <AlertTriangle className="w-8 h-8 text-rose-600 mx-auto mb-3" />
+                    <h4 className="font-bold text-rose-900 text-sm">Unable to Retrieve Images</h4>
+                    <p className="text-xs text-rose-700 mt-1 mb-4 leading-relaxed">
+                      {setImagesFetchError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRetryFetchImages}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-[#C59B27]" />
+                      <span>Retry Loading</span>
+                    </button>
+                  </div>
+                ) : safeImages.length === 0 ? (
+                  <div className="text-center py-12 px-4 border-2 border-dashed border-slate-300 rounded-xl bg-white">
+                    <Images className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <h4 className="font-bold text-slate-800 text-sm">No photos in this image set yet</h4>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-4">
+                      This card currently falls back to displaying its cover photo. Click the button above to upload photos to this collection.
+                    </p>
+                    <label
+                      htmlFor="multi-set-file-upload"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4 text-[#C59B27]" />
+                      <span>+ Upload Photos Now</span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {safeImages.map((img, idx) => {
+                      if (!img) return null;
+                      const imgKey = img.id || `img-${idx}`;
+                      const replaceInputId = `replace-set-img-${imgKey}`;
+                      const isConfirmingDelete = deleteConfirmImageId === img.id;
+
+                      return (
+                        <div
+                          key={imgKey}
+                          className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between group hover:border-[#C59B27]/60 transition-all"
+                        >
+                          {/* Top Bar with Order & Move Controls */}
+                          <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-700 bg-slate-200/80 px-2 py-0.5 rounded text-[10px]">
+                              #{idx + 1}
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveSetImage(idx, 'up')}
+                                disabled={idx === 0 || setModalUploading}
+                                className="p-1 border border-slate-200 rounded hover:bg-slate-200 disabled:opacity-20 text-slate-600 transition-colors cursor-pointer"
+                                title="Move earlier in lightbox order"
+                                aria-label="Move earlier"
+                              >
+                                <ArrowLeft className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveSetImage(idx, 'down')}
+                                disabled={idx === safeImages.length - 1 || setModalUploading}
+                                className="p-1 border border-slate-200 rounded hover:bg-slate-200 disabled:opacity-20 text-slate-600 transition-colors cursor-pointer"
+                                title="Move later in lightbox order"
+                                aria-label="Move later"
+                              >
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Thumbnail Frame */}
+                          <div className="relative aspect-[4/3] bg-slate-200 overflow-hidden">
+                            {img.image_url ? (
+                              <img
+                                src={img.image_url}
+                                alt={`Set photo #${idx + 1}`}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                <ImageIcon className="w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bottom Action Controls */}
+                          <div className="p-2 bg-white border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
+                            <input
+                              id={replaceInputId}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={setModalUploading}
+                              onChange={(e) => handleReplaceSetImage(img.id, e)}
+                            />
+                            <label
+                              htmlFor={replaceInputId}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-slate-700 hover:text-[#0B2545] hover:bg-slate-100 rounded cursor-pointer font-medium"
+                              title="Replace this photo"
+                            >
+                              <Upload className="w-3 h-3 text-[#C59B27]" />
+                              <span>Replace</span>
+                            </label>
+
+                            {isConfirmingDelete ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSetImage(img.id)}
+                                  className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded text-[10px] cursor-pointer"
+                                  title="Confirm delete"
+                                >
+                                  Confirm?
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmImageId(null)}
+                                  className="px-1.5 py-1 text-slate-500 hover:bg-slate-100 rounded text-[10px] cursor-pointer"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmImageId(img.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded font-medium cursor-pointer"
+                                title="Remove this photo from set"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>Remove</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-white border-t border-slate-200 flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">
+                  Total: <strong className="text-slate-800">{safeImages.length} photos</strong> in this collection
+                </span>
+
+                <button
+                  type="button"
+                  onClick={handleCloseManageSet}
+                  className="px-5 py-2 bg-[#0B2545] hover:bg-[#133E6E] text-white text-xs font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  Done &amp; Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
+  </AdminErrorBoundary>
   );
 };

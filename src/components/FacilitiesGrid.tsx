@@ -41,7 +41,10 @@ export const FacilitiesGrid: React.FC<FacilitiesGridProps> = ({ initialConfigs =
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
       {orderedCards.map((facility) => {
-        const imageUrl = configs[facility.key]?.image_url;
+        const config = configs[facility.key];
+        const imageUrl = config?.image_url;
+        const showTitle = config?.show_title !== false;
+        const cardTitle = config?.title?.trim() || facility.title;
 
         return (
           <div
@@ -53,7 +56,7 @@ export const FacilitiesGrid: React.FC<FacilitiesGridProps> = ({ initialConfigs =
               {imageUrl ? (
                 <img
                   src={imageUrl}
-                  alt={facility.title}
+                  alt={cardTitle}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -65,10 +68,18 @@ export const FacilitiesGrid: React.FC<FacilitiesGridProps> = ({ initialConfigs =
             {/* Content Body */}
             <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between">
               <div>
-                <div className="w-8 h-0.5 bg-[#C59B27] mb-3.5" />
-                <h2 className="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
-                  {facility.title}
-                </h2>
+                {/* Title rendered when showTitle is enabled and non-empty */}
+                {showTitle && cardTitle ? (
+                  <>
+                    <div className="w-8 h-0.5 bg-[#C59B27] mb-3.5" />
+                    <h2 className="text-lg sm:text-xl font-bold text-[#0B2545] font-serif mb-3 leading-snug">
+                      {cardTitle}
+                    </h2>
+                  </>
+                ) : (
+                  // Spacing preservation when title is hidden to avoid card collapse
+                  <div className="pt-2" />
+                )}
                 <p className="text-xs sm:text-sm text-slate-700 leading-relaxed mb-6">
                   {facility.desc}
                 </p>
