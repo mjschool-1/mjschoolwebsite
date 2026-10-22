@@ -1193,6 +1193,397 @@ export async function deleteGallerySetImage(imageId: string): Promise<{ success:
   }
 }
 
+// ============================================================================
+// 10. Faculty & Staff Management
+// ============================================================================
+
+export interface StaffRecord {
+  id: string;
+  name: string;
+  departments: string[];
+  department?: string;
+  qualification: string;
+  image_url: string | null;
+  display_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const STAFF_DEPARTMENTS = [
+  'English',
+  'Mathematics',
+  'Science & Technology',
+  'Social Studies',
+  'General Knowledge',
+  'Hindi',
+  'Nursery',
+  'Marathi',
+  'Peon',
+  'Headmistress',
+] as const;
+
+export type StaffDepartment = typeof STAFF_DEPARTMENTS[number];
+
+export const DEFAULT_STAFF_MEMBERS: StaffRecord[] = [
+  { id: '11111111-0001-4000-8000-000000000001', name: 'Staff Member 01', departments: ['Headmistress'], department: 'Headmistress', qualification: 'Qualification to be added', image_url: null, display_order: 0 },
+  { id: '11111111-0002-4000-8000-000000000002', name: 'Staff Member 02', departments: ['English'], department: 'English', qualification: 'Qualification to be added', image_url: null, display_order: 1 },
+  { id: '11111111-0003-4000-8000-000000000003', name: 'Staff Member 03', departments: ['Mathematics'], department: 'Mathematics', qualification: 'Qualification to be added', image_url: null, display_order: 2 },
+  { id: '11111111-0004-4000-8000-000000000004', name: 'Staff Member 04', departments: ['Science & Technology'], department: 'Science & Technology', qualification: 'Qualification to be added', image_url: null, display_order: 3 },
+  { id: '11111111-0005-4000-8000-000000000005', name: 'Staff Member 05', departments: ['Social Studies'], department: 'Social Studies', qualification: 'Qualification to be added', image_url: null, display_order: 4 },
+  { id: '11111111-0006-4000-8000-000000000006', name: 'Staff Member 06', departments: ['General Knowledge'], department: 'General Knowledge', qualification: 'Qualification to be added', image_url: null, display_order: 5 },
+  { id: '11111111-0007-4000-8000-000000000007', name: 'Staff Member 07', departments: ['Hindi'], department: 'Hindi', qualification: 'Qualification to be added', image_url: null, display_order: 6 },
+  { id: '11111111-0008-4000-8000-000000000008', name: 'Staff Member 08', departments: ['Nursery'], department: 'Nursery', qualification: 'Qualification to be added', image_url: null, display_order: 7 },
+  { id: '11111111-0009-4000-8000-000000000009', name: 'Staff Member 09', departments: ['Marathi'], department: 'Marathi', qualification: 'Qualification to be added', image_url: null, display_order: 8 },
+  { id: '11111111-0010-4000-8000-000000000010', name: 'Staff Member 10', departments: ['Peon'], department: 'Peon', qualification: 'Qualification to be added', image_url: null, display_order: 9 },
+];
+
+export async function getAllStaffMembers(): Promise<StaffRecord[]> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return DEFAULT_STAFF_MEMBERS;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('faculty_staff')
+      .select('*')
+      .order('display_order', { ascending: true });
+
+    if (error) {
+      console.warn('[getAllStaffMembers] Supabase query notice:', error.message);
+      return DEFAULT_STAFF_MEMBERS;
+    }
+
+    if (!data || data.length === 0) {
+      return DEFAULT_STAFF_MEMBERS;
+    }
+
+    return (data as any[]).map((row) => {
+      let depts: string[] = [];
+      if (Array.isArray(row.departments) && row.departments.length > 0) {
+        depts = row.departments;
+      } else if (typeof row.department === 'string' && row.department.trim() !== '') {
+        depts = row.department.includes(' · ')
+          ? row.department.split(' · ').map((s: string) => s.trim())
+          : [row.department.trim()];
+      } else {
+        depts = ['English'];
+      }
+
+      // Automatically migrate legacy 'Science' to 'Science & Technology' and deduplicate
+      depts = depts.map((d: string) => (d === 'Science' ? 'Science & Technology' : d));
+      depts = Array.from(new Set(depts));
+
+      return {
+        ...row,
+        departments: depts,
+        department: depts.join(' · '),
+      };
+    }) as StaffRecord[];
+  } catch (err: any) {
+    console.warn('[getAllStaffMembers] Exception reading staff:', err?.message);
+    return DEFAULT_STAFF_MEMBERS;
+  }
+}
+
+export async function createStaffMember(
+  staff: Omit<StaffRecord, 'id' | 'created_at' | 'updated_at'> & {
+    departments?: string[];
+    department?: string;
+  }
+): Promise<{ success: boolean; data?: StaffRecord; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const depts = staff.departments && staff.departments.length > 0
+      ? staff.departments
+      : (staff.department ? (staff.department.includes(' · ') ? staff.department.split(' · ').map(s => s.trim()) : [staff.department.trim()]) : ['English']);
+
+    const joinedDepts = depts.join(' · ');
+
+    const payload: any = {
+      name: staff.name.trim(),
+      departments: depts,
+      department: joinedDepts,
+      qualification: staff.qualification.trim(),
+      image_url: staff.image_url || null,
+      display_order: staff.display_order ?? 0,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { data, error } = await supabase
+      .from('faculty_staff')
+      .insert(payload)
+      .select('*');
+
+    // If 'departments' column is missing in schema cache, fallback to updating department column
+    if (error && (error.message?.includes('departments') || error.code === 'PGRST204')) {
+      const fallbackPayload = { ...payload };
+      delete fallbackPayload.departments;
+      const retryRes = await supabase.from('faculty_staff').insert(fallbackPayload).select('*');
+      data = retryRes.data;
+      error = retryRes.error;
+    }
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (!data || data.length === 0) {
+      return { success: false, error: 'Database insert succeeded, but could not retrieve created staff record.' };
+    }
+
+    const row = data[0] as any;
+    return {
+      success: true,
+      data: {
+        ...row,
+        departments: Array.isArray(row.departments) && row.departments.length > 0 ? row.departments : depts,
+        department: joinedDepts,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to create staff member.' };
+  }
+}
+
+export async function updateStaffMember(
+  id: string,
+  updates: Partial<Omit<StaffRecord, 'id' | 'created_at'>> & {
+    departments?: string[];
+    department?: string;
+  }
+): Promise<{ success: boolean; data?: StaffRecord; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const payload: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    let newDepts: string[] | undefined = undefined;
+
+    if (updates.name !== undefined) payload.name = updates.name.trim();
+    if (updates.departments !== undefined) {
+      newDepts = updates.departments;
+      payload.departments = updates.departments;
+      payload.department = updates.departments.join(' · ');
+    } else if (updates.department !== undefined) {
+      newDepts = updates.department.includes(' · ')
+        ? updates.department.split(' · ').map(s => s.trim())
+        : [updates.department.trim()];
+      payload.departments = newDepts;
+      payload.department = updates.department.trim();
+    }
+    if (updates.qualification !== undefined) payload.qualification = updates.qualification.trim();
+    if (updates.image_url !== undefined) payload.image_url = updates.image_url;
+    if (updates.display_order !== undefined) payload.display_order = updates.display_order;
+
+    let { data, error } = await supabase
+      .from('faculty_staff')
+      .update(payload)
+      .eq('id', id)
+      .select('*');
+
+    // If 'departments' column is missing in schema cache, fallback to updating department column
+    if (error && (error.message?.includes('departments') || error.code === 'PGRST204') && payload.departments) {
+      const fallbackPayload = { ...payload };
+      delete fallbackPayload.departments;
+      const retryRes = await supabase.from('faculty_staff').update(fallbackPayload).eq('id', id).select('*');
+      data = retryRes.data;
+      error = retryRes.error;
+    }
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (data && data.length > 0) {
+      const row = data[0] as any;
+      const resolvedDepts = Array.isArray(row.departments) && row.departments.length > 0
+        ? row.departments
+        : (newDepts || (row.department ? [row.department] : ['English']));
+
+      return {
+        success: true,
+        data: {
+          ...row,
+          departments: resolvedDepts,
+          department: resolvedDepts.join(' · '),
+        },
+      };
+    }
+
+    // No matching row was updated. If this is an unseeded default placeholder, insert it with its UUID
+    const defaultMember = DEFAULT_STAFF_MEMBERS.find((d) => d.id === id);
+    if (defaultMember) {
+      const depts = newDepts || defaultMember.departments;
+      const insertPayload: any = {
+        id: defaultMember.id,
+        name: updates.name !== undefined ? updates.name.trim() : defaultMember.name,
+        departments: depts,
+        department: depts.join(' · '),
+        qualification: updates.qualification !== undefined ? updates.qualification.trim() : defaultMember.qualification,
+        image_url: updates.image_url !== undefined ? updates.image_url : defaultMember.image_url,
+        display_order: updates.display_order !== undefined ? updates.display_order : defaultMember.display_order,
+        updated_at: new Date().toISOString(),
+      };
+
+      let { data: insertData, error: insertError } = await supabase
+        .from('faculty_staff')
+        .insert(insertPayload)
+        .select('*');
+
+      if (insertError && (insertError.message?.includes('departments') || insertError.code === 'PGRST204')) {
+        const fallbackInsert = { ...insertPayload };
+        delete fallbackInsert.departments;
+        const retryInsert = await supabase.from('faculty_staff').insert(fallbackInsert).select('*');
+        insertData = retryInsert.data;
+        insertError = retryInsert.error;
+      }
+
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+
+      if (insertData && insertData.length > 0) {
+        const row = insertData[0] as any;
+        return {
+          success: true,
+          data: {
+            ...row,
+            departments: Array.isArray(row.departments) && row.departments.length > 0 ? row.departments : depts,
+            department: depts.join(' · '),
+          },
+        };
+      }
+    }
+
+    return { success: false, error: `Staff member record with ID ${id} not found in database.` };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to update staff member.' };
+  }
+}
+
+
+
+export async function deleteStaffMember(
+  id: string,
+  imageUrl?: string | null
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const { error } = await supabase
+      .from('faculty_staff')
+      .delete()
+      .eq('id', id)
+      .select('*');
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (imageUrl) {
+      await deleteStorageStaffPhoto(imageUrl);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to delete staff member.' };
+  }
+}
+
+export async function updateStaffOrders(
+  orderedIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const timestamp = new Date().toISOString();
+
+    for (let idx = 0; idx < orderedIds.length; idx++) {
+      const id = orderedIds[idx];
+      const { error } = await supabase
+        .from('faculty_staff')
+        .update({
+          display_order: idx,
+          updated_at: timestamp,
+        })
+        .eq('id', id);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to reorder staff records.' };
+  }
+}
+
+export async function uploadStaffPhoto(
+  fileBlob: Blob,
+  staffId: string
+): Promise<{ success: boolean; publicUrl?: string; storagePath?: string; error?: string }> {
+  if (!supabase || !isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase client is not configured.' };
+  }
+
+  try {
+    const timestamp = Date.now();
+    const filename = `staff/staff-${staffId}-${timestamp}.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('site-banners')
+      .upload(filename, fileBlob, {
+        contentType: 'image/jpeg',
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      return { success: false, error: `Storage upload failed: ${uploadError.message}` };
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('site-banners')
+      .getPublicUrl(filename);
+
+    if (!publicUrlData?.publicUrl) {
+      return { success: false, error: 'Failed to resolve public image URL from storage.' };
+    }
+
+    return { success: true, publicUrl: publicUrlData.publicUrl, storagePath: filename };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to upload photograph.' };
+  }
+}
+
+export async function deleteStorageStaffPhoto(imageUrlOrPath?: string | null): Promise<void> {
+  if (!imageUrlOrPath || !supabase || !isSupabaseConfigured()) return;
+  try {
+    let filePath = imageUrlOrPath;
+    if (imageUrlOrPath.includes('/storage/v1/object/public/site-banners/')) {
+      filePath = imageUrlOrPath.split('/storage/v1/object/public/site-banners/')[1]?.split('?')[0] || '';
+    }
+    if (filePath && filePath.startsWith('staff/')) {
+      await supabase.storage.from('site-banners').remove([filePath]);
+    }
+  } catch (err) {
+    console.warn('[deleteStorageStaffPhoto] Notice removing file:', err);
+  }
+}
+
+
 
 
 

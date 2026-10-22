@@ -33,8 +33,19 @@ import {
   replaceGallerySetImage,
   deleteGallerySetImage,
   GalleryCardImageItem,
+  StaffRecord,
+  getAllStaffMembers,
+  createStaffMember,
+  updateStaffMember,
+  deleteStaffMember,
+  updateStaffOrders,
+  uploadStaffPhoto,
+  deleteStorageStaffPhoto,
+  STAFF_DEPARTMENTS,
+  DEFAULT_STAFF_MEMBERS,
 } from '../../lib/supabase';
 import { FACILITIES_CARDS, FacilityCardItem } from '../../data/schoolData';
+import { StaffPhotoCropModal } from './StaffPhotoCropModal';
 import {
   Image as ImageIcon,
   Images,
@@ -68,9 +79,16 @@ import {
   EyeOff,
   Bell,
   FileText,
+  GraduationCap,
+  Camera,
+  ChevronUp,
+  ChevronDown,
+  User,
+  Pencil,
+  Crop as CropIcon,
 } from 'lucide-react';
 
-type AdminTab = 'banners' | 'students' | 'receipts' | 'notices' | 'gallery';
+type AdminTab = 'banners' | 'students' | 'receipts' | 'notices' | 'gallery' | 'staff';
 
 interface SelectedImageState {
   file: File;
@@ -247,6 +265,520 @@ export const SchoolOfficeAdmin: React.FC = () => {
   const [setImagesLoading, setSetImagesLoading] = useState<boolean>(false);
   const [setImagesFetchError, setSetImagesFetchError] = useState<string | null>(null);
 
+  // ============================================================================
+  // Faculty & Staff Directory State
+  // ============================================================================
+  const [staffList, setStaffList] = useState<StaffRecord[]>(DEFAULT_STAFF_MEMBERS);
+  const [staffLoading, setStaffLoading] = useState<boolean>(false);
+  const [staffMessage, setStaffMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [staffSearchQuery, setStaffSearchQuery] = useState<string>('');
+  const [staffDeptFilter, setStaffDeptFilter] = useState<string>('All');
+
+  // Edit / Add Staff Modal State
+  const [isEditingStaff, setIsEditingStaff] = useState<boolean>(false);
+  const [editingStaff, setEditingStaff] = useState<StaffRecord | null>(null);
+  const [staffNameInput, setStaffNameInput] = useState<string>('');
+  const [staffDeptsInput, setStaffDeptsInput] = useState<string[]>(['English']);
+  const [deptValidationError, setDeptValidationError] = useState<string | null>(null);
+  const [legacyDeptNotice, setLegacyDeptNotice] = useState<string | null>(null);
+  const [staffQualInput, setStaffQualInput] = useState<string>('');
+  const [staffImageUrl, setStaffImageUrl] = useState<string | null>(null);
+  const [isSavingStaff, setIsSavingStaff] = useState<boolean>(false);
+
+  // Square Crop Modal State
+  const [isCropModalOpen, setIsCropModalOpen] = useState<boolean>(false);
+  const [cropStaffTarget, setCropStaffTarget] = useState<{ id: string; name: string } | null>(null);
+  const [cropTempSrc, setCropTempSrc] = useState<string | null>(null);
+  const [isUploadingStaffPhoto, setIsUploadingStaffPhoto] = useState<boolean>(false);
+  const [pendingStaffPhotoBlob, setPendingStaffPhotoBlob] = useState<Blob | null>(null);
+
+  // Delete Confirmation State
+  const [deleteConfirmStaff, setDeleteConfirmStaff] = useState<StaffRecord | null>(null);
+  const [isDeletingStaff, setIsDeletingStaff] = useState<boolean>(false);
+
+  const loadStaff = useCallback(async () => {
+    setStaffLoading(true);
+    try {
+      const records = await getAllStaffMembers();
+      if (records && records.length > 0) {
+        setStaffList(records);
+      } else {
+        setStaffList(DEFAULT_STAFF_MEMBERS);
+      }
+    } catch (err: any) {
+      console.warn('[StaffAdmin] Error fetching staff directory:', err);
+    } finally {
+      setStaffLoading(false);
+    }
+  }, []);
+
+  const handleOpenAddStaff = () => {
+    setEditingStaff(null);
+    setStaffNameInput('');
+    setStaffDeptsInput(['English']);
+    setDeptValidationError(null);
+    setLegacyDeptNotice(null);
+    setStaffQualInput('');
+    setStaffImageUrl(null);
+    setPendingStaffPhotoBlob(null);
+    setIsEditingStaff(true);
+    setStaffMessage(null);
+  };
+
+  const handleOpenEditStaff = (staff: StaffRecord) => {
+    setEditingStaff(staff);
+    setStaffNameInput(staff.name);
+
+    let initialDepts: string[] = [];
+    if (staff.departments && staff.departments.length > 0) {
+      initialDepts = staff.departments;
+    } else if (staff.department && staff.department.trim() !== '') {
+      initialDepts = staff.department.includes(' · ')
+        ? staff.department.split(' · ').map((s) => s.trim())
+        : [staff.department.trim()];
+    } else {
+      initialDepts = ['English'];
+    }
+
+    // Automatically map legacy 'Science' to 'Science & Technology' and deduplicate
+    initialDepts = Array.from(new Set(initialDepts.map((d) => (d === 'Science' ? 'Science & Technology' : d))));
+
+    setStaffDeptsInput(initialDepts);
+    setDeptValidationError(null);
+
+    const legacyFound = initialDepts.filter((d) => !(STAFF_DEPARTMENTS as readonly string[]).includes(d));
+    if (legacyFound.length > 0) {
+      setLegacyDeptNotice(legacyFound.join(', '));
+    } else {
+      setLegacyDeptNotice(null);
+    }
+
+    setStaffQualInput(staff.qualification || '');
+    setStaffImageUrl(staff.image_url || null);
+    setPendingStaffPhotoBlob(null);
+    setIsEditingStaff(true);
+    setStaffMessage(null);
+  };
+
+  const handleSaveStaff = async () => {
+    const finalName = staffNameInput.trim();
+    if (!finalName) {
+      alert('Please enter a staff member name.');
+      return;
+    }
+
+    if (staffDeptsInput.length === 0) {
+      setDeptValidationError('Please select at least one department for this staff member.');
+      return;
+    }
+    setDeptValidationError(null);
+
+    const finalDepts = staffDeptsInput;
+    const finalDeptString = staffDeptsInput.join(' · ');
+
+    setIsSavingStaff(true);
+    setStaffMessage(null);
+
+    try {
+      if (editingStaff) {
+        let finalImageUrl = staffImageUrl;
+        const oldPhotoUrl = editingStaff.image_url;
+
+        // 1. If a new photograph was cropped in the modal, upload it now using the member's real primary key
+        if (pendingStaffPhotoBlob) {
+          const uploadRes = await uploadStaffPhoto(pendingStaffPhotoBlob, editingStaff.id);
+          if (!uploadRes.success || !uploadRes.publicUrl) {
+            throw new Error(uploadRes.error || 'Failed to upload photograph.');
+          }
+          finalImageUrl = uploadRes.publicUrl;
+        }
+
+        // 2. Update staff member in the database
+        const res = await updateStaffMember(editingStaff.id, {
+          name: finalName,
+          departments: finalDepts,
+          department: finalDeptString,
+          qualification: staffQualInput.trim(),
+          image_url: finalImageUrl,
+        });
+
+        if (!res.success) {
+          // If we uploaded a new photo but DB update failed, clean up the newly uploaded photo
+          if (pendingStaffPhotoBlob && finalImageUrl) {
+            await deleteStorageStaffPhoto(finalImageUrl);
+          }
+          throw new Error(res.error || 'Failed to update staff member.');
+        }
+
+        // 3. Only after DB update succeeds, clean up old photo from storage if it was replaced or removed
+        if (oldPhotoUrl && oldPhotoUrl !== finalImageUrl) {
+          await deleteStorageStaffPhoto(oldPhotoUrl);
+        }
+
+        setStaffList((prev) =>
+          prev.map((s) =>
+            s.id === editingStaff.id
+              ? {
+                  ...s,
+                  name: finalName,
+                  departments: finalDepts,
+                  department: finalDeptString,
+                  qualification: staffQualInput.trim(),
+                  image_url: finalImageUrl,
+                  updated_at: new Date().toISOString(),
+                }
+              : s
+          )
+        );
+
+        setStaffMessage({
+          type: 'success',
+          text: `Staff member "${finalName}" updated successfully!`,
+        });
+      } else {
+        // Adding a NEW staff member:
+        // Step 1: Insert record first to obtain the created record's ACTUAL database ID
+        const maxOrder = staffList.length > 0 ? Math.max(...staffList.map((s) => s.display_order)) + 1 : 0;
+        const createRes = await createStaffMember({
+          name: finalName,
+          departments: finalDepts,
+          department: finalDeptString,
+          qualification: staffQualInput.trim(),
+          image_url: null,
+          display_order: maxOrder,
+        });
+
+        if (!createRes.success || !createRes.data) {
+          throw new Error(createRes.error || 'Failed to create staff member record.');
+        }
+
+        const newRecord = createRes.data;
+
+        // Step 2: If a photograph was cropped, upload using the created record's real primary key ID
+        if (pendingStaffPhotoBlob) {
+          const uploadRes = await uploadStaffPhoto(pendingStaffPhotoBlob, newRecord.id);
+          if (uploadRes.success && uploadRes.publicUrl) {
+            const updatePhotoRes = await updateStaffMember(newRecord.id, {
+              image_url: uploadRes.publicUrl,
+            });
+            if (updatePhotoRes.success && updatePhotoRes.data) {
+              newRecord.image_url = uploadRes.publicUrl;
+            }
+          }
+        }
+
+        setStaffList((prev) => [...prev, newRecord]);
+        setStaffMessage({
+          type: 'success',
+          text: `New staff member "${finalName}" created successfully!`,
+        });
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mj_staff_updated'));
+        try {
+          localStorage.setItem('mj_staff_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+
+      setPendingStaffPhotoBlob(null);
+      setIsEditingStaff(false);
+    } catch (err: any) {
+      console.error('[StaffAdmin] Save error:', err);
+      setStaffMessage({
+        type: 'error',
+        text: err?.message || 'Failed to save staff record.',
+      });
+    } finally {
+      setIsSavingStaff(false);
+    }
+  };
+
+  const handleDeleteStaff = async () => {
+    if (!deleteConfirmStaff) return;
+
+    setIsDeletingStaff(true);
+    try {
+      const res = await deleteStaffMember(deleteConfirmStaff.id, deleteConfirmStaff.image_url);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to delete staff member.');
+      }
+
+      const deletedName = deleteConfirmStaff.name;
+      setStaffList((prev) => prev.filter((s) => s.id !== deleteConfirmStaff.id));
+      setDeleteConfirmStaff(null);
+      setStaffMessage({
+        type: 'success',
+        text: `Staff member "${deletedName}" was removed from the directory.`,
+      });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mj_staff_updated'));
+        try {
+          localStorage.setItem('mj_staff_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+    } catch (err: any) {
+      console.error('[StaffAdmin] Delete error:', err);
+      setStaffMessage({
+        type: 'error',
+        text: err?.message || 'Failed to delete staff record.',
+      });
+    } finally {
+      setIsDeletingStaff(false);
+    }
+  };
+
+  const handleMoveStaff = async (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index <= 0) return;
+    if (direction === 'down' && index >= staffList.length - 1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const reordered = [...staffList];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    const updatedWithOrder = reordered.map((item, idx) => ({
+      ...item,
+      display_order: idx,
+    }));
+
+    setStaffList(updatedWithOrder);
+
+    try {
+      const orderedIds = updatedWithOrder.map((s) => s.id);
+      const res = await updateStaffOrders(orderedIds);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to save staff order.');
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mj_staff_updated'));
+        try {
+          localStorage.setItem('mj_staff_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+    } catch (err: any) {
+      console.warn('[StaffAdmin] Order update notice:', err);
+    }
+  };
+
+  const handleTriggerCropForMember = (e: React.ChangeEvent<HTMLInputElement>, member: StaffRecord) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setStaffMessage({
+        type: 'error',
+        text: 'Please select a valid image file (JPEG, PNG, WebP).',
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setStaffMessage({
+        type: 'error',
+        text: 'Selected photograph exceeds the 10 MB limit.',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropTempSrc(reader.result as string);
+      setCropStaffTarget({ id: member.id, name: member.name });
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    e.target.value = '';
+  };
+
+  const handleTriggerCropForEditForm = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setStaffMessage({
+        type: 'error',
+        text: 'Please select a valid image file (JPEG, PNG, WebP).',
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setStaffMessage({
+        type: 'error',
+        text: 'Selected photograph exceeds the 10 MB limit.',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropTempSrc(reader.result as string);
+      setCropStaffTarget({
+        id: editingStaff?.id || 'form_new_staff',
+        name: staffNameInput.trim() || 'Staff Member',
+      });
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    e.target.value = '';
+  };
+
+  const handleCropAndUpload = async (croppedBlob: Blob, croppedDataUrl: string) => {
+    if (!cropStaffTarget) return;
+
+    // Case A: Crop triggered from within the Add / Edit Staff Modal form
+    if (isEditingStaff) {
+      // Set the 512x512 square cropped preview in the form frame immediately
+      setStaffImageUrl(croppedDataUrl);
+      // Store the cropped blob to be uploaded with the real record ID upon form save
+      setPendingStaffPhotoBlob(croppedBlob);
+      // Close the crop modal smoothly
+      setIsCropModalOpen(false);
+      setCropTempSrc(null);
+      setCropStaffTarget(null);
+      return;
+    }
+
+    // Case B: Crop triggered directly from the Directory Table row (Inline Quick Action)
+    setIsUploadingStaffPhoto(true);
+    let newlyUploadedUrl: string | null = null;
+
+    try {
+      const existingMember = staffList.find((s) => s.id === cropStaffTarget.id);
+      const oldPhotoUrl = existingMember?.image_url;
+
+      // 1. Upload cropped 512x512 image using the member's real primary key
+      const uploadRes = await uploadStaffPhoto(croppedBlob, cropStaffTarget.id);
+      if (!uploadRes.success || !uploadRes.publicUrl) {
+        throw new Error(uploadRes.error || 'Failed to upload cropped photograph.');
+      }
+
+      newlyUploadedUrl = uploadRes.publicUrl;
+      const persistentUrl = uploadRes.publicUrl;
+
+      // 2. Update staff member in database (only succeeds if DB write passes)
+      const updateRes = await updateStaffMember(cropStaffTarget.id, {
+        image_url: persistentUrl,
+      });
+
+      if (!updateRes.success) {
+        throw new Error(updateRes.error || 'Failed to update staff record with photograph.');
+      }
+
+      // 3. Only after DB update succeeds, clean up old photo from storage (avoid orphans)
+      if (oldPhotoUrl && oldPhotoUrl !== persistentUrl) {
+        await deleteStorageStaffPhoto(oldPhotoUrl);
+      }
+
+      // Update staff list in component state
+      setStaffList((prev) =>
+        prev.map((s) =>
+          s.id === cropStaffTarget.id
+            ? { ...s, image_url: persistentUrl, updated_at: new Date().toISOString() }
+            : s
+        )
+      );
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mj_staff_updated'));
+        try {
+          localStorage.setItem('mj_staff_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+
+      setStaffMessage({
+        type: 'success',
+        text: `Photograph for "${cropStaffTarget.name}" cropped to 1:1 square and saved successfully!`,
+      });
+
+      setIsCropModalOpen(false);
+      setCropTempSrc(null);
+      setCropStaffTarget(null);
+    } catch (err: any) {
+      console.error('[StaffAdmin] Crop & Upload failed:', err);
+      // Clean up newly uploaded file if database update failed
+      if (newlyUploadedUrl) {
+        await deleteStorageStaffPhoto(newlyUploadedUrl);
+      }
+      setStaffMessage({
+        type: 'error',
+        text: err?.message || 'Failed to upload and save cropped photograph.',
+      });
+      throw err;
+    } finally {
+      setIsUploadingStaffPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async (member: StaffRecord) => {
+    if (!window.confirm(`Are you sure you want to remove the photograph for "${member.name}"? The default placeholder will be displayed.`)) {
+      return;
+    }
+
+    try {
+      const oldPhotoUrl = member.image_url;
+      const res = await updateStaffMember(member.id, {
+        image_url: null,
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to remove photograph.');
+      }
+
+      // Clean up storage file after DB update succeeds
+      if (oldPhotoUrl) {
+        await deleteStorageStaffPhoto(oldPhotoUrl);
+      }
+
+      setStaffList((prev) =>
+        prev.map((s) => (s.id === member.id ? { ...s, image_url: null, updated_at: new Date().toISOString() } : s))
+      );
+
+      if (editingStaff && editingStaff.id === member.id) {
+        setStaffImageUrl(null);
+        setPendingStaffPhotoBlob(null);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mj_staff_updated'));
+        try {
+          localStorage.setItem('mj_staff_updated_at', String(Date.now()));
+        } catch (_) {}
+      }
+
+      setStaffMessage({
+        type: 'success',
+        text: `Photograph removed for "${member.name}".`,
+      });
+    } catch (err: any) {
+      console.error('[StaffAdmin] Remove photo failed:', err);
+      setStaffMessage({
+        type: 'error',
+        text: err?.message || 'Failed to remove photograph.',
+      });
+    }
+  };
+
+  const filteredStaff = staffList.filter((s) => {
+    const matchesSearch =
+      staffSearchQuery.trim() === '' ||
+      s.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
+      (s.departments && s.departments.some((d) => d.toLowerCase().includes(staffSearchQuery.toLowerCase()))) ||
+      (s.department && s.department.toLowerCase().includes(staffSearchQuery.toLowerCase())) ||
+      s.qualification.toLowerCase().includes(staffSearchQuery.toLowerCase());
+
+    const matchesDept =
+      staffDeptFilter === 'All' ||
+      (s.departments && s.departments.includes(staffDeptFilter)) ||
+      (s.department && (s.department === staffDeptFilter || s.department.includes(staffDeptFilter)));
+
+    return matchesSearch && matchesDept;
+  });
 
   const loadFacilityImages = useCallback(async () => {
     setFacilityImagesLoading(true);
@@ -350,7 +882,10 @@ export const SchoolOfficeAdmin: React.FC = () => {
       loadInfraImage();
       loadGalleryPageItems();
     }
-  }, [isAuthenticated, activeTab, loadFacilityImages, loadInfraImage, loadGalleryPageItems]);
+    if (isAuthenticated && activeTab === 'staff') {
+      loadStaff();
+    }
+  }, [isAuthenticated, activeTab, loadFacilityImages, loadInfraImage, loadGalleryPageItems, loadStaff]);
 
   // Reorder Handlers for Facilities Grid Cards
   const handleFacilityDragStart = (e: React.DragEvent, index: number) => {
@@ -2534,6 +3069,22 @@ export const SchoolOfficeAdmin: React.FC = () => {
             >
               <LayoutGrid className="w-4 h-4" />
               <span>5. Gallery</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('staff');
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors text-left cursor-pointer ${
+                activeTab === 'staff'
+                  ? 'bg-[#C59B27] text-[#0B2545] shadow-sm font-black'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>6. Faculty &amp; Staff</span>
             </button>
           </nav>
         </div>
@@ -5025,6 +5576,305 @@ export const SchoolOfficeAdmin: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* 6. Faculty & Staff Directory Management Section */}
+        {activeTab === 'staff' && (
+          <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+            {/* Header Banner */}
+            <div className="bg-white border border-slate-200 p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-[#C59B27] inline-block" />
+                  <h2 className="text-xl sm:text-2xl font-serif font-black text-[#0B2545]">
+                    Faculty &amp; Staff Directory Management
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl">
+                  Manage educator profiles, designations, academic qualifications, 1:1 square portraits, and display ordering. Layout matches{' '}
+                  <a
+                    href="/about/faculty-staff/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#0B2545] hover:text-[#C59B27] font-semibold underline inline-flex items-center gap-1"
+                  >
+                    <span>/about/faculty-staff/</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={loadStaff}
+                  disabled={staffLoading}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  title="Refresh staff records from Supabase"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${staffLoading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenAddStaff}
+                  className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider px-4 py-2 bg-[#C59B27] hover:bg-[#b58b19] text-[#0B2545] transition-colors shadow-sm cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add New Staff Member</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Notification Banner */}
+            {staffMessage && (
+              <div
+                className={`p-4 border text-xs sm:text-sm flex items-center justify-between gap-3 ${
+                  staffMessage.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-rose-50 border-rose-200 text-rose-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {staffMessage.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{staffMessage.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStaffMessage(null)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Search, Filter & Counter Bar */}
+            <div className="bg-white border border-slate-200 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
+                {/* Search Input */}
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search name, qualification..."
+                    value={staffSearchQuery}
+                    onChange={(e) => setStaffSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded focus:outline-none focus:border-[#C59B27]"
+                  />
+                  {staffSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setStaffSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Department Filter */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <select
+                    value={staffDeptFilter}
+                    onChange={(e) => setStaffDeptFilter(e.target.value)}
+                    className="text-xs border border-slate-200 rounded px-2.5 py-1.5 bg-white text-slate-700 focus:outline-none focus:border-[#C59B27] w-full sm:w-auto"
+                  >
+                    <option value="All">All Departments</option>
+                    {STAFF_DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Counter Badge */}
+              <div className="text-xs text-slate-500 font-mono shrink-0">
+                Showing <span className="font-bold text-[#0B2545]">{filteredStaff.length}</span> of {staffList.length} staff members
+              </div>
+            </div>
+
+            {/* Staff Directory Table (Matching Frontend /about/faculty-staff/ exactly) */}
+            <div className="border border-slate-200 border-t-2 border-t-[#C59B27] bg-white overflow-hidden shadow-none">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[700px] sm:min-w-full">
+                  <thead>
+                    <tr className="bg-[#0B2545] text-white text-xs uppercase tracking-wider font-sans">
+                      <th scope="col" className="py-3.5 px-4 sm:px-6 font-bold w-[24%]">
+                        Name
+                      </th>
+                      <th scope="col" className="py-3.5 px-4 sm:px-6 font-bold w-[28%]">
+                        Department(s)
+                      </th>
+                      <th scope="col" className="py-3.5 px-4 sm:px-6 font-bold w-[20%]">
+                        Qualification
+                      </th>
+                      <th scope="col" className="py-3.5 px-4 sm:px-6 font-bold text-center w-[14%]">
+                        Image
+                      </th>
+                      <th scope="col" className="py-3.5 px-4 sm:px-6 font-bold text-center w-[14%]">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-xs sm:text-sm text-slate-800">
+                    {filteredStaff.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-500 text-xs">
+                          No staff records found matching your query.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStaff.map((member, index) => {
+                        const actualIndex = staffList.findIndex((s) => s.id === member.id);
+                        return (
+                          <tr
+                            key={member.id}
+                            className={
+                              index % 2 === 1
+                                ? 'bg-slate-50/60 hover:bg-amber-50/30 transition-colors'
+                                : 'bg-white hover:bg-amber-50/30 transition-colors'
+                            }
+                          >
+                            {/* 1. Name */}
+                            <td className="py-3.5 px-4 sm:px-6 font-serif font-bold text-[#0B2545]">
+                              {member.name}
+                            </td>
+
+                            {/* 2. Department(s) */}
+                            <td className="py-3.5 px-4 sm:px-6 text-slate-700 leading-snug">
+                              {member.departments && member.departments.length > 0
+                                ? member.departments.join(' · ')
+                                : (member.department || '—')}
+                            </td>
+
+                            {/* 3. Qualification */}
+                            <td className="py-3.5 px-4 sm:px-6 text-slate-500 italic">
+                              {member.qualification || '—'}
+                            </td>
+
+                            {/* 4. Image Column (Square Photo Frame + Crop Trigger) */}
+                            <td className="py-3.5 px-4 sm:px-6 text-center">
+                              <div className="flex flex-col items-center gap-1.5">
+                                <div className="relative group/photo w-11 h-11 rounded-md bg-slate-100 border border-slate-200 mx-auto flex items-center justify-center overflow-hidden shadow-2xs">
+                                  {member.image_url ? (
+                                    <img
+                                      src={member.image_url}
+                                      alt={`Portrait of ${member.name}`}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  ) : (
+                                    <User className="w-5 h-5 text-slate-400 stroke-[1.5]" />
+                                  )}
+
+                                  {/* Quick Crop/Upload Overlay */}
+                                  <label
+                                    className="absolute inset-0 bg-black/60 opacity-0 group-hover/photo:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-white"
+                                    title={member.image_url ? 'Replace photograph (1:1 crop)' : 'Upload photograph (1:1 crop)'}
+                                  >
+                                    <Camera className="w-4 h-4 text-[#F6D55C]" />
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="sr-only"
+                                      onChange={(e) => handleTriggerCropForMember(e, member)}
+                                    />
+                                  </label>
+                                </div>
+
+                                {/* Quick photo actions */}
+                                <div className="flex items-center gap-1.5 text-[10.5px]">
+                                  <label className="text-[#0B2545] hover:text-[#C59B27] font-semibold cursor-pointer">
+                                    {member.image_url ? 'Crop/Replace' : 'Upload'}
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="sr-only"
+                                      onChange={(e) => handleTriggerCropForMember(e, member)}
+                                    />
+                                  </label>
+                                  {member.image_url && (
+                                    <>
+                                      <span className="text-slate-300">•</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemovePhoto(member)}
+                                        className="text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                                        title="Remove photo"
+                                      >
+                                        Remove
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 5. Actions Column (Reorder + Edit + Delete) */}
+                            <td className="py-3.5 px-4 sm:px-6 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                {/* Up / Down Order Buttons */}
+                                <div className="flex flex-col gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveStaff(actualIndex, 'up')}
+                                    disabled={actualIndex <= 0}
+                                    className="p-1 rounded text-slate-400 hover:text-[#0B2545] hover:bg-slate-200 disabled:opacity-20 cursor-pointer"
+                                    title="Move Up"
+                                  >
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveStaff(actualIndex, 'down')}
+                                    disabled={actualIndex >= staffList.length - 1}
+                                    className="p-1 rounded text-slate-400 hover:text-[#0B2545] hover:bg-slate-200 disabled:opacity-20 cursor-pointer"
+                                    title="Move Down"
+                                  >
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                {/* Edit Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditStaff(member)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-[#0B2545] text-[#0B2545] hover:text-white rounded border border-slate-200 transition-colors cursor-pointer"
+                                  title="Edit staff details"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+
+                                {/* Delete Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirmStaff(member)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                  title="Delete staff record"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ============================================================= */}
@@ -5317,6 +6167,308 @@ export const SchoolOfficeAdmin: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* ============================================================= */}
+      {/* ADD / EDIT STAFF MODAL (Root Level Overlay, z-[110])          */}
+      {/* ============================================================= */}
+      {isEditingStaff && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm animate-fadeIn"
+        >
+          <div className="relative w-full max-w-lg bg-white border border-slate-700 shadow-2xl rounded-2xl flex flex-col overflow-hidden max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="bg-[#0B2545] text-white px-5 py-4 flex items-center justify-between border-b border-[#C59B27]/40 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#133E6E] border border-[#C59B27]/50 flex items-center justify-center text-[#F6D55C]">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold font-serif text-white leading-tight">
+                    {editingStaff ? `Edit Staff Member` : 'Add New Staff Member'}
+                  </h3>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    {editingStaff ? editingStaff.name : 'Configure record for public staff directory'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingStaff(false)}
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 bg-slate-50 flex-1 text-xs">
+              {/* Staff Name */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Staff Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={staffNameInput}
+                  onChange={(e) => setStaffNameInput(e.target.value)}
+                  placeholder="e.g. Mrs. Sunita Sharma"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 font-medium focus:outline-none focus:border-[#C59B27]"
+                  required
+                />
+              </div>
+
+              {/* Department(s) Multi-Select Control */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-slate-700 uppercase tracking-wider text-xs">
+                    Department(s) <span className="text-rose-500">*</span>
+                  </label>
+                  {staffDeptsInput.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStaffDeptsInput([]);
+                        setDeptValidationError('Please select at least one department.');
+                      }}
+                      className="text-xs text-rose-600 hover:text-rose-800 font-medium hover:underline"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {legacyDeptNotice && (
+                  <div className="mb-2.5 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                    <span className="font-semibold">Note:</span> This staff member currently has legacy department value(s): <span className="italic font-medium">"{legacyDeptNotice}"</span>. Please select from the approved departments below.
+                  </div>
+                )}
+
+                {/* Selected Departments Chips Bar */}
+                <div className="min-h-[42px] p-2 bg-slate-50 border border-slate-300 rounded-lg flex flex-wrap items-center gap-1.5">
+                  {staffDeptsInput.length === 0 ? (
+                    <span className="text-xs text-slate-400 italic px-1">
+                      No departments selected. Please check at least one department below.
+                    </span>
+                  ) : (
+                    staffDeptsInput.map((dept) => (
+                      <span
+                        key={dept}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#0B2545] text-white shadow-2xs"
+                      >
+                        <span>{dept}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStaffDeptsInput((prev) => prev.filter((d) => d !== dept));
+                            if (staffDeptsInput.length <= 1) {
+                              setDeptValidationError('Please select at least one department.');
+                            } else {
+                              setDeptValidationError(null);
+                            }
+                          }}
+                          className="hover:text-amber-300 text-white/80 transition-colors ml-0.5 focus:outline-none"
+                          title={`Remove ${dept}`}
+                        >
+                          <X className="w-3 h-3 stroke-[2.5]" />
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                {/* 7 Department Checkboxes Grid */}
+                <div className="mt-2 p-2.5 bg-white border border-slate-200 rounded-lg max-h-48 overflow-y-auto">
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Available Departments (Select one or more)
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {STAFF_DEPARTMENTS.map((dept) => {
+                      const isChecked = staffDeptsInput.includes(dept);
+                      return (
+                        <label
+                          key={dept}
+                          className={`flex items-center gap-2.5 p-2 rounded-md border text-xs font-medium cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-amber-50/90 border-[#C59B27] text-[#0B2545] shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setDeptValidationError(null);
+                              setStaffDeptsInput((prev) =>
+                                prev.includes(dept)
+                                  ? prev.filter((d) => d !== dept)
+                                  : [...prev, dept]
+                              );
+                            }}
+                            className="w-4 h-4 rounded text-[#0B2545] focus:ring-[#C59B27] border-slate-300 accent-[#0B2545]"
+                          />
+                          <span className="select-none">{dept}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {deptValidationError && (
+                  <p className="text-xs text-rose-600 mt-1.5 font-medium flex items-center gap-1">
+                    <span>⚠</span> {deptValidationError}
+                  </p>
+                )}
+              </div>
+
+              {/* Qualification */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Qualification / Credentials
+                </label>
+                <input
+                  type="text"
+                  value={staffQualInput}
+                  onChange={(e) => setStaffQualInput(e.target.value)}
+                  placeholder="e.g. M.Sc. (Maths), B.Ed."
+                  className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-slate-800 font-medium focus:outline-none focus:border-[#C59B27]"
+                />
+              </div>
+
+              {/* Photograph Section with 1:1 Square Frame & Crop Trigger */}
+              <div className="pt-2 border-t border-slate-200">
+                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Staff Photograph (1:1 Square Frame)
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="relative w-16 h-16 rounded-lg bg-slate-100 border-2 border-slate-300 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+                    {staffImageUrl ? (
+                      <img src={staffImageUrl} alt="Staff preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-8 h-8 text-slate-400 stroke-[1.5]" />
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 flex-1">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0B2545] hover:bg-[#133E6E] text-white rounded-lg font-bold text-xs uppercase cursor-pointer transition-colors shadow-xs">
+                      <Camera className="w-3.5 h-3.5 text-[#F6D55C]" />
+                      <span>{staffImageUrl ? 'Crop & Replace Photo' : 'Upload & Crop Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => handleTriggerCropForEditForm(e)}
+                      />
+                    </label>
+
+                    {staffImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setStaffImageUrl(null)}
+                        className="block text-xs text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                      >
+                        Remove photo
+                      </button>
+                    )}
+                    <p className="text-[11px] text-slate-500">
+                      Uploads open the square crop editor (512 × 512 px) before saving.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-100 px-5 py-3.5 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsEditingStaff(false)}
+                disabled={isSavingStaff}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-200 border border-slate-300 rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveStaff}
+                disabled={isSavingStaff || !staffNameInput.trim()}
+                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-black uppercase tracking-wider text-[#0B2545] bg-[#C59B27] hover:bg-[#b58b19] rounded-lg shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isSavingStaff ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Staff Member</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* DELETE CONFIRMATION MODAL (Root Level Overlay, z-[120])       */}
+      {/* ============================================================= */}
+      {deleteConfirmStaff && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+        >
+          <div className="relative w-full max-w-md bg-white border border-rose-200 shadow-2xl rounded-2xl p-6 text-center">
+            <div className="w-12 h-12 bg-rose-50 border border-rose-200 rounded-full flex items-center justify-center mx-auto mb-3 text-rose-600">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold font-serif text-[#0B2545] mb-1">
+              Delete Staff Member?
+            </h3>
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Are you sure you want to delete <span className="font-bold text-[#0B2545]">{deleteConfirmStaff.name}</span> ({deleteConfirmStaff.departments && deleteConfirmStaff.departments.length > 0 ? deleteConfirmStaff.departments.join(' · ') : deleteConfirmStaff.department})? This action cannot be undone.
+            </p>
+            <div className="flex items-center gap-2 justify-center">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmStaff(null)}
+                disabled={isDeletingStaff}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteStaff}
+                disabled={isDeletingStaff}
+                className="px-4 py-2 text-xs font-black uppercase tracking-wider text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingStaff ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* SQUARE PHOTOGRAPH CROP MODAL                                  */}
+      {/* ============================================================= */}
+      <StaffPhotoCropModal
+        isOpen={isCropModalOpen}
+        imageSrc={cropTempSrc}
+        staffName={cropStaffTarget?.name || 'Staff Member'}
+        onClose={() => {
+          setIsCropModalOpen(false);
+          setCropTempSrc(null);
+          setCropStaffTarget(null);
+        }}
+        onCropAndUpload={handleCropAndUpload}
+        isUploading={isUploadingStaffPhoto}
+      />
     </div>
   </AdminErrorBoundary>
   );

@@ -493,6 +493,56 @@ VALUES
     ('traditions', 'Indian Values & Traditions', NULL, 3)
 ON CONFLICT (facility_key) DO NOTHING;
 
+-- ==============================================================================
+-- 10. Faculty & Staff Directory Table & Policies
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.faculty_staff (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    department TEXT NOT NULL,
+    qualification TEXT NOT NULL DEFAULT '',
+    image_url TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_faculty_staff_display_order 
+ON public.faculty_staff (display_order ASC);
+
+GRANT SELECT ON TABLE public.faculty_staff TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.faculty_staff TO authenticated;
+
+ALTER TABLE public.faculty_staff ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read of faculty_staff" ON public.faculty_staff;
+CREATE POLICY "Allow public read of faculty_staff"
+    ON public.faculty_staff
+    FOR SELECT
+    USING (true);
+
+DROP POLICY IF EXISTS "Allow authorized staff insert faculty_staff" ON public.faculty_staff;
+CREATE POLICY "Allow authorized staff insert faculty_staff"
+    ON public.faculty_staff
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Allow authorized staff update faculty_staff" ON public.faculty_staff;
+CREATE POLICY "Allow authorized staff update faculty_staff"
+    ON public.faculty_staff
+    FOR UPDATE
+    TO authenticated
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Allow authorized staff delete faculty_staff" ON public.faculty_staff;
+CREATE POLICY "Allow authorized staff delete faculty_staff"
+    ON public.faculty_staff
+    FOR DELETE
+    TO authenticated
+    USING (public.is_admin());
+
 
 
 

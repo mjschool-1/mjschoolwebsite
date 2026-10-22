@@ -1,93 +1,19 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { User } from 'lucide-react';
+import { FacultyStaffTable } from '../../components/FacultyStaffTable';
+import { getAllStaffMembers, StaffRecord } from '../../lib/supabase';
 
 const breadcrumbs = [
   { label: 'About Us', href: '/about/principals-message/' },
   { label: 'Faculty & Staff' },
 ];
 
-// Maintainable staff directory data model ready for future database / Supabase integration
-interface StaffMember {
-  id: number;
-  name: string;
-  department: string;
-  qualification: string;
-  image: string;
+let staffDirectory: StaffRecord[] = [];
+try {
+  staffDirectory = await getAllStaffMembers();
+} catch (err) {
+  console.warn('[faculty-staff.astro] Failed to prefetch staff:', err);
 }
-
-const staffDirectory: StaffMember[] = [
-  {
-    id: 1,
-    name: 'Staff Member 01',
-    department: 'Primary & Pre-Primary Wing',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 2,
-    name: 'Staff Member 02',
-    department: 'Primary & Pre-Primary Wing',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 3,
-    name: 'Staff Member 03',
-    department: 'Middle School Wing',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 4,
-    name: 'Staff Member 04',
-    department: 'Middle School Wing',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 5,
-    name: 'Staff Member 05',
-    department: 'Secondary School Wing (CBSE)',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 6,
-    name: 'Staff Member 06',
-    department: 'Secondary School Wing (CBSE)',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 7,
-    name: 'Staff Member 07',
-    department: 'Senior Secondary Science Wing',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 8,
-    name: 'Staff Member 08',
-    department: 'Commerce & Humanities Wing',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 9,
-    name: 'Staff Member 09',
-    department: 'Physical Education & Sports',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-  {
-    id: 10,
-    name: 'Staff Member 10',
-    department: 'Performing Arts & Co-Curricular',
-    qualification: 'Qualification to be added',
-    image: '',
-  },
-];
 ---
 
 <PublicLayout
@@ -100,54 +26,8 @@ const staffDirectory: StaffMember[] = [
 >
   <div class="py-12 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      
-      {/* Faculty Directory Table */}
-      <div class="border border-slate-200 border-t-2 border-t-[#C59B27] bg-white overflow-hidden shadow-none">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse min-w-[560px] sm:min-w-full">
-            <thead>
-              <tr class="bg-[#0B2545] text-white text-xs uppercase tracking-wider font-sans">
-                <th scope="col" class="py-3.5 px-4 sm:px-6 font-bold w-[28%]">Name</th>
-                <th scope="col" class="py-3.5 px-4 sm:px-6 font-bold w-[34%]">Department</th>
-                <th scope="col" class="py-3.5 px-4 sm:px-6 font-bold w-[26%]">Qualification</th>
-                <th scope="col" class="py-3.5 px-4 sm:px-6 font-bold text-center w-[12%]">Image</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-200 text-xs sm:text-sm text-slate-800">
-              {staffDirectory.map((member, index) => (
-                <tr class={index % 2 === 1 ? 'bg-slate-50/60 hover:bg-amber-50/30 transition-colors' : 'bg-white hover:bg-amber-50/30 transition-colors'}>
-                  <td class="py-3.5 px-4 sm:px-6 font-serif font-bold text-[#0B2545]">
-                    {member.name}
-                  </td>
-                  <td class="py-3.5 px-4 sm:px-6 text-slate-700 leading-snug">
-                    {member.department}
-                  </td>
-                  <td class="py-3.5 px-4 sm:px-6 text-slate-500 italic">
-                    {member.qualification}
-                  </td>
-                  <td class="py-3.5 px-4 sm:px-6 text-center">
-                    <div
-                      class="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 mx-auto flex items-center justify-center text-slate-400"
-                      title={member.image ? member.name : `${member.name} (Placeholder avatar)`}
-                    >
-                      {member.image ? (
-                        <img
-                          src={member.image}
-                          alt={`Portrait of ${member.name}`}
-                          class="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <User class="w-4 h-4 text-slate-400" aria-label={`Avatar placeholder for ${member.name}`} />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
+      {/* Faculty Directory Table (Synchronized with Admin Portal) */}
+      <FacultyStaffTable client:load initialStaff={staffDirectory} />
     </div>
   </div>
 </PublicLayout>
