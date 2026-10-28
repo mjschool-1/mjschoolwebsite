@@ -5,49 +5,67 @@ import {
   getPublishedBanners,
   DEFAULT_HOMEPAGE_BANNER,
   SiteBannerRecord,
+  resolveBannerUrl,
+  getCachedBanners,
+  setCachedBanners,
+  areBannerListsEqual,
 } from '../lib/supabase';
 
 interface HeroSliderProps {
   onSelectNav?: (target: 'fee-structure' | 'about-school') => void;
   initialDesktopBanner?: string;
   initialMobileBanner?: string;
+  initialBanners?: SiteBannerRecord[];
 }
-
-const resolveBannerUrl = (path: string, defaultPath: string) => {
-  if (!path) return `${import.meta.env.BASE_URL}${defaultPath.replace(/^\//, '')}`;
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
-};
 
 export const HeroSlider: React.FC<HeroSliderProps> = ({
   initialDesktopBanner,
   initialMobileBanner,
+  initialBanners,
 }) => {
-  // Initial fallback banner based on props or verified local defaults
-  const initialBanner: SiteBannerRecord = {
-    ...DEFAULT_HOMEPAGE_BANNER,
-    desktop_image_path: initialDesktopBanner || DEFAULT_HOMEPAGE_BANNER.desktop_image_path,
-    mobile_image_path: initialMobileBanner || DEFAULT_HOMEPAGE_BANNER.mobile_image_path,
-  };
+  // Determine immediate initial banner list:
+  // 1. Explicit initialBanners passed from Astro frontmatter (latest verified server-prefetched banners)
+  // 2. Client-side localStorage cache (for fast client navigation)
+  // 3. Fallback to props / local default only as a last resort
+  const [banners, setBanners] = useState<SiteBannerRecord[]>(() => {
+    if (initialBanners && initialBanners.length > 0) {
+      return initialBanners;
+    }
+    if (typeof window !== 'undefined') {
+      const cached = getCachedBanners('homepage');
+      if (cached && cached.length > 0) return cached;
+    }
+    const initialBanner: SiteBannerRecord = {
+      ...DEFAULT_HOMEPAGE_BANNER,
+      desktop_image_path: initialDesktopBanner || DEFAULT_HOMEPAGE_BANNER.desktop_image_path,
+      mobile_image_path: initialMobileBanner || DEFAULT_HOMEPAGE_BANNER.mobile_image_path,
+    };
+    return [initialBanner];
+  });
 
-  const [banners, setBanners] = useState<SiteBannerRecord[]>([initialBanner]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isTabVisible, setIsTabVisible] = useState<boolean>(true);
   const [fallbackErrors, setFallbackErrors] = useState<Record<string, boolean>>({});
 
-  // 1. Fetch all published banners from Supabase
+  // 1. Fetch all published banners from Supabase in background to catch real-time admin updates
   useEffect(() => {
     let isMounted = true;
     async function loadBanners() {
       try {
         const publishedBanners = await getPublishedBanners('homepage');
         if (isMounted && publishedBanners && publishedBanners.length > 0) {
-          setBanners(publishedBanners);
+          setBanners((prev) => {
+            if (areBannerListsEqual(prev, publishedBanners)) {
+              return prev;
+            }
+            return publishedBanners;
+          });
+          setCachedBanners('homepage', publishedBanners);
           setCurrentIndex((prev) => (prev >= publishedBanners.length ? 0 : prev));
         }
       } catch (err) {
-        console.warn('[HeroSlider] Failover: retaining default banner asset.', err);
+        console.warn('[HeroSlider] Failover: retaining verified banner asset.', err);
       }
     }
 
@@ -125,7 +143,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
               const mobileUrl = hasError
                 ? resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png')
-                : resolveBannerUrl(banner.mobile_image_path, 'hero-mobile.png');
+                : resolveBannerUrl(banner.mobile_image_path || banner.desktop_image_path, 'hero-mobile.png');
 
               return (
                 <div
@@ -155,7 +173,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           /* Single Banner: static display without sliding tracks or overhead */
           <div className="w-full h-full relative">
             {(() => {
-              const single = banners[0] || initialBanner;
+              const single = banners[0] || DEFAULT_HOMEPAGE_BANNER;
               const hasError = fallbackErrors[single.id || 'single'];
 
               const desktopUrl = hasError
@@ -164,7 +182,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
               const mobileUrl = hasError
                 ? resolveBannerUrl(DEFAULT_HOMEPAGE_BANNER.mobile_image_path, 'hero-mobile.png')
-                : resolveBannerUrl(single.mobile_image_path, 'hero-mobile.png');
+                : resolveBannerUrl(single.mobile_image_path || single.desktop_image_path, 'hero-mobile.png');
 
               return (
                 <picture className="w-full h-full block">

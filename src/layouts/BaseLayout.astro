@@ -2,11 +2,15 @@
 interface Props {
   title?: string;
   description?: string;
+  preloadDesktopBanner?: string;
+  preloadMobileBanner?: string;
 }
 
 const {
   title = "MJ School - Shahapur | Affiliated to CBSE",
-  description = "Official website for MJ School, Shahapur, featuring School Hours, Fee Structure, Grades, and School Overview."
+  description = "Official website for MJ School, Shahapur, featuring School Hours, Fee Structure, Grades, and School Overview.",
+  preloadDesktopBanner,
+  preloadMobileBanner,
 } = Astro.props;
 
 import '../index.css';
@@ -24,6 +28,12 @@ import '../index.css';
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" href="/logo.png" />
+    {preloadDesktopBanner && (
+      <link rel="preload" as="image" href={preloadDesktopBanner} media="(min-width: 768px)" fetchpriority="high" />
+    )}
+    {preloadMobileBanner && (
+      <link rel="preload" as="image" href={preloadMobileBanner} media="(max-width: 767px)" fetchpriority="high" />
+    )}
   </head>
   <body class="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col selection:bg-[#C59B27] selection:text-white">
     <slot />

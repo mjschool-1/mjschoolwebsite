@@ -60,9 +60,13 @@ export interface NoticeRecord {
   updated_by?: string | null;
 }
 
-// Safely obtain environment variables (compatible with Astro / Vite on Cloudflare)
-const supabaseUrl = (import.meta.env.PUBLIC_SUPABASE_URL || '').trim();
-const supabaseAnonKey = (import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '').trim();
+// Safely obtain environment variables (compatible with Astro / Vite on Cloudflare and Node/tsx)
+const envObj: Record<string, string | undefined> = 
+  (typeof import.meta !== 'undefined' && import.meta.env) ? (import.meta.env as any) : 
+  (typeof process !== 'undefined' && process.env) ? (process.env as any) : {};
+
+const supabaseUrl = (envObj.PUBLIC_SUPABASE_URL || envObj.VITE_SUPABASE_URL || '').trim();
+const supabaseAnonKey = (envObj.PUBLIC_SUPABASE_ANON_KEY || envObj.VITE_SUPABASE_ANON_KEY || '').trim();
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
@@ -142,13 +146,17 @@ export const BANNER_PAGE_CATEGORIES: BannerPageCategory[] = [
   },
 ];
 
-export const resolveBannerUrl = (path: string, defaultPath: string = '/hero-desktop.png') => {
-  if (!path) return `${import.meta.env.BASE_URL}${defaultPath.replace(/^\//, '')}`;
+export const resolveBannerUrl = (path: string, defaultPath: string = '') => {
+  const baseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) || '/';
+  if (!path) {
+    if (!defaultPath) return '';
+    return `${baseUrl}${defaultPath.replace(/^\//, '')}`;
+  }
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+  return `${baseUrl}${path.replace(/^\//, '')}`;
 };
 
-// Verified local default assets used as failover for homepage
+// Verified local default assets used as failover for homepage (only when Supabase is completely unreachable)
 export const DEFAULT_HOMEPAGE_BANNER: SiteBannerRecord = {
   id: 'default-homepage-banner',
   page_key: 'homepage',
@@ -161,6 +169,72 @@ export const DEFAULT_HOMEPAGE_BANNER: SiteBannerRecord = {
   updated_at: new Date().toISOString(),
   updated_by: 'MJ School System',
 };
+
+const BANNER_CACHE_PREFIX = 'mj_banner_cache_';
+
+export function getCachedBanners(pageKey: string): SiteBannerRecord[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`${BANNER_CACHE_PREFIX}${pageKey}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.banners)) {
+      return parsed.banners;
+    }
+  } catch (e) {
+    // Fail silently on cache read error
+  }
+  return null;
+}
+
+export function setCachedBanners(pageKey: string, banners: SiteBannerRecord[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(
+      `${BANNER_CACHE_PREFIX}${pageKey}`,
+      JSON.stringify({ banners, timestamp: Date.now() })
+    );
+  } catch (e) {
+    // Fail silently on storage quota or security error
+  }
+}
+
+export function clearCachedBanners(pageKey?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (pageKey) {
+      localStorage.removeItem(`${BANNER_CACHE_PREFIX}${pageKey}`);
+    } else {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(BANNER_CACHE_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      }
+    }
+  } catch (e) {
+    // Fail silently
+  }
+}
+
+export function areBannerListsEqual(a: SiteBannerRecord[] | undefined, b: SiteBannerRecord[] | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (
+      a[i].id !== b[i].id ||
+      a[i].desktop_image_path !== b[i].desktop_image_path ||
+      a[i].mobile_image_path !== b[i].mobile_image_path ||
+      a[i].is_published !== b[i].is_published ||
+      a[i].display_order !== b[i].display_order ||
+      a[i].title !== b[i].title
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Fetch all active published banners for a specific page, ordered deterministically.
@@ -671,7 +745,7 @@ export async function getFacilityCardConfigs(): Promise<Record<string, FacilityC
         .from('facility_images')
         .select('facility_key, title, image_url, display_order')
         .order('display_order', { ascending: true });
-      data = fallback.data;
+      data = fallback.data as any;
       error = fallback.error;
     }
 

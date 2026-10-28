@@ -7,6 +7,7 @@ import {
   updateBannerOrders,
   DEFAULT_HOMEPAGE_BANNER,
   SiteBannerRecord,
+  clearCachedBanners,
   verifyStaffAuthorization,
   NoticeRecord,
   getAllNotices,
@@ -64,6 +65,7 @@ import {
   RefreshCw,
   Save,
   ArrowLeft,
+  ArrowRight,
   Calendar,
   Layers,
   LayoutGrid,
@@ -2478,6 +2480,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         type: 'success',
         text: `Banner "${banner.title || 'Untitled'}" is now ${!banner.is_published ? 'Published' : 'saved as Draft'}.`,
       });
+      clearCachedBanners(selectedBannerCategory);
       await loadBanners(selectedBannerCategory);
     } catch (err: any) {
       setSaveBannerMessage({
@@ -2518,6 +2521,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         text: `Banner "${banner.title || 'Untitled'}" was deleted successfully.`,
       });
       setDeleteConfirmBanner(null);
+      clearCachedBanners(selectedBannerCategory);
       await loadBanners(selectedBannerCategory);
     } catch (err: any) {
       setSaveBannerMessage({
@@ -2584,6 +2588,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         type: 'success',
         text: 'Carousel display sequence updated and saved successfully!',
       });
+      clearCachedBanners(selectedBannerCategory);
     }
   };
 
@@ -2620,6 +2625,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
         type: 'success',
         text: 'Carousel display sequence updated successfully.',
       });
+      clearCachedBanners(selectedBannerCategory);
     }
   };
 
@@ -2773,6 +2779,7 @@ export const SchoolOfficeAdmin: React.FC = () => {
       clearMobileSelection();
       setIsEditingBanner(false);
       setEditingBanner(null);
+      clearCachedBanners(selectedBannerCategory);
       await loadBanners(selectedBannerCategory);
     } catch (err: any) {
       console.error('[SchoolOfficeAdmin] Banner save failed:', err);

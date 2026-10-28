@@ -4,6 +4,7 @@ import { Header } from '../components/Header';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { PageBanner } from '../components/PageBanner';
+import { getPublishedBanners, resolveBannerUrl, SiteBannerRecord } from '../lib/supabase';
 
 interface BreadcrumbItem {
   label: string;
@@ -21,6 +22,8 @@ interface Props {
   hideBannerText?: boolean;
   hideMobileBannerText?: boolean;
   hideHeaderAlerts?: boolean;
+  preloadDesktopBanner?: string;
+  preloadMobileBanner?: string;
 }
 
 const {
@@ -34,12 +37,39 @@ const {
   hideBannerText,
   hideMobileBannerText,
   hideHeaderAlerts,
+  preloadDesktopBanner: explicitPreloadDesktop,
+  preloadMobileBanner: explicitPreloadMobile,
 } = Astro.props;
 
 const currentPath = Astro.url.pathname;
+
+let initialBanners: SiteBannerRecord[] = [];
+if (pageKey) {
+  try {
+    initialBanners = await getPublishedBanners(pageKey);
+  } catch (err) {
+    console.warn(`[PublicLayout] Error prefetching banners for ${pageKey}:`, err);
+  }
+}
+
+const firstBanner = initialBanners[0];
+const subpageDesktopPreload = firstBanner?.desktop_image_path
+  ? resolveBannerUrl(firstBanner.desktop_image_path)
+  : undefined;
+const subpageMobilePreload = (firstBanner?.mobile_image_path || firstBanner?.desktop_image_path)
+  ? resolveBannerUrl(firstBanner.mobile_image_path || firstBanner.desktop_image_path)
+  : undefined;
+
+const effectivePreloadDesktop = explicitPreloadDesktop || (subpageDesktopPreload?.startsWith('http') ? subpageDesktopPreload : undefined);
+const effectivePreloadMobile = explicitPreloadMobile || (subpageMobilePreload?.startsWith('http') ? subpageMobilePreload : undefined);
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout
+  title={title}
+  description={description}
+  preloadDesktopBanner={effectivePreloadDesktop}
+  preloadMobileBanner={effectivePreloadMobile}
+>
   {/* 1. Main Header with School Crest and Search Bar */}
   <Header client:idle />
 
@@ -57,6 +87,7 @@ const currentPath = Astro.url.pathname;
       className={bannerClass}
       hideTextOverlay={hideBannerText}
       hideMobileOverlayOnly={hideMobileBannerText}
+      initialBanners={initialBanners}
     />
   ) : pageTitle ? (
     <div class="bg-gradient-to-r from-[#0B2545] via-[#133E6E] to-[#0B2545] text-white py-10 sm:py-12 border-b-4 border-[#C59B27] shadow-inner">

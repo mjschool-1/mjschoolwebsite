@@ -3,7 +3,7 @@ import PublicLayout from '../layouts/PublicLayout.astro';
 import { HeroSlider, FlashNews } from '../components/HeroSlider';
 import { AboutSchoolSection } from '../components/AboutSchoolSection';
 import { NoticeBoardAndEvents } from '../components/NoticeBoardAndEvents';
-import { getGalleryItemsBySection } from '../lib/supabase';
+import { getGalleryItemsBySection, getPublishedBanners, resolveBannerUrl, SiteBannerRecord } from '../lib/supabase';
 
 let infraItem = null;
 try {
@@ -12,12 +12,32 @@ try {
 } catch (e) {
   console.warn('[index.astro] Error prefetching infrastructure image:', e);
 }
+
+let homepageBanners: SiteBannerRecord[] = [];
+try {
+  homepageBanners = await getPublishedBanners('homepage');
+} catch (e) {
+  console.warn('[index.astro] Error prefetching homepage banners:', e);
+}
+
+const firstHpBanner = homepageBanners[0];
+const preloadHpDesktop = firstHpBanner?.desktop_image_path
+  ? resolveBannerUrl(firstHpBanner.desktop_image_path)
+  : undefined;
+const preloadHpMobile = (firstHpBanner?.mobile_image_path || firstHpBanner?.desktop_image_path)
+  ? resolveBannerUrl(firstHpBanner.mobile_image_path || firstHpBanner.desktop_image_path)
+  : undefined;
 ---
 
-<PublicLayout title="MJ School - Shahpur | Affiliated to CBSE" hideHeaderAlerts={true}>
+<PublicLayout
+  title="MJ School - Shahpur | Affiliated to CBSE"
+  hideHeaderAlerts={true}
+  preloadDesktopBanner={preloadHpDesktop?.startsWith('http') ? preloadHpDesktop : undefined}
+  preloadMobileBanner={preloadHpMobile?.startsWith('http') ? preloadHpMobile : undefined}
+>
   {/* 1. Hero Banner */}
   <section id="home">
-    <HeroSlider client:load />
+    <HeroSlider client:load initialBanners={homepageBanners} />
   </section>
 
   {/* 2. Full-Width Alerts Strip immediately below Homepage Hero */}

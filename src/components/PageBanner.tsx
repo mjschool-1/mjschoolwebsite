@@ -3,6 +3,9 @@ import {
   getPublishedBanners,
   resolveBannerUrl,
   SiteBannerRecord,
+  getCachedBanners,
+  setCachedBanners,
+  areBannerListsEqual,
 } from '../lib/supabase';
 
 interface BreadcrumbItem {
@@ -18,6 +21,7 @@ interface PageBannerProps {
   className?: string;
   hideTextOverlay?: boolean;
   hideMobileOverlayOnly?: boolean;
+  initialBanners?: SiteBannerRecord[];
 }
 
 export const PageBanner: React.FC<PageBannerProps> = ({
@@ -28,8 +32,18 @@ export const PageBanner: React.FC<PageBannerProps> = ({
   className,
   hideTextOverlay,
   hideMobileOverlayOnly,
+  initialBanners,
 }) => {
-  const [banners, setBanners] = useState<SiteBannerRecord[]>([]);
+  const [banners, setBanners] = useState<SiteBannerRecord[]>(() => {
+    if (initialBanners && initialBanners.length > 0) {
+      return initialBanners;
+    }
+    if (typeof window !== 'undefined') {
+      const cached = getCachedBanners(pageKey);
+      if (cached && cached.length > 0) return cached;
+    }
+    return [];
+  });
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isTabVisible, setIsTabVisible] = useState<boolean>(true);
@@ -42,15 +56,24 @@ export const PageBanner: React.FC<PageBannerProps> = ({
     shouldHideOverlay || hideMobileOverlayOnly
   );
 
-  // 1. Fetch published banners for this specific page key
+  // 1. Fetch published banners for this specific page key in background
   useEffect(() => {
     let isMounted = true;
     async function load() {
       try {
         const records = await getPublishedBanners(pageKey);
-        if (isMounted && records && records.length > 0) {
-          setBanners(records);
-          setCurrentIndex(0);
+        if (isMounted) {
+          if (records && records.length > 0) {
+            setBanners((prev) => {
+              if (areBannerListsEqual(prev, records)) {
+                return prev;
+              }
+              return records;
+            });
+            setCachedBanners(pageKey, records);
+          } else {
+            setBanners((prev) => (prev.length === 0 ? prev : []));
+          }
         }
       } catch (err) {
         console.warn(`[PageBanner] Failover to fallback heading for ${pageKey}:`, err);
@@ -93,20 +116,8 @@ export const PageBanner: React.FC<PageBannerProps> = ({
     if (shouldHideOverlay) {
       return (
         <div className={`relative w-full border-b-4 border-[#C59B27] bg-[#07172C] select-none ${className || ''}`}>
-          <div className="hidden md:block w-full aspect-[1920/640] relative overflow-hidden">
-            <img
-              src="/hero-desktop.png"
-              alt={pageTitle || "Page Banner"}
-              className="w-full h-full object-cover block"
-            />
-          </div>
-          <div className="block md:hidden w-full aspect-[535/378] relative overflow-hidden">
-            <img
-              src="/hero-mobile.png"
-              alt={pageTitle || "Page Banner"}
-              className="w-full h-full object-cover block"
-            />
-          </div>
+          <div className="hidden md:block w-full aspect-[1920/640] relative overflow-hidden bg-gradient-to-r from-[#07172C] via-[#0B2545] to-[#07172C]" />
+          <div className="block md:hidden w-full aspect-[535/378] relative overflow-hidden bg-gradient-to-r from-[#07172C] via-[#0B2545] to-[#07172C]" />
         </div>
       );
     }
