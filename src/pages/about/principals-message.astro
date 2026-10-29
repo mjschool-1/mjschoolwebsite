@@ -1,6 +1,6 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
-import { Quote, BookOpen, Compass, User } from 'lucide-react';
+import { Quote } from 'lucide-react';
 
 const breadcrumbs = [
   { label: 'About Us', href: '/about/principals-message/' },
@@ -21,65 +21,59 @@ const breadcrumbs = [
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         
         {/* Head Mistress Profile Sidebar */}
-        <div class="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center shadow-sm">
-          <div class="w-44 h-44 rounded-full mx-auto overflow-hidden border-4 border-[#C59B27] bg-slate-200 shadow-lg mb-4 flex items-center justify-center">
-            <User class="w-20 h-20 text-slate-400" />
+        <div class="lg:col-span-4 bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden text-center shadow-sm">
+          <div class="w-full aspect-[4/3] bg-slate-100">
+            <img
+              src="/head-mistress.jpeg"
+              alt="Head Mistress of MJ School, Shahapur"
+              class="w-full h-full block object-cover object-[30%_15%]"
+              loading="lazy"
+            />
           </div>
-          <h2 class="text-xl font-bold text-[#0B2545] font-serif">Office of the Head Mistress</h2>
-          <p class="text-xs text-[#C59B27] font-semibold mt-0.5 uppercase tracking-wider">MJ School, Shahpur</p>
-          <p class="text-xs text-slate-500 mt-1">Affiliated to CBSE, New Delhi</p>
+          <div class="p-5 sm:p-6">
+            <h2 class="text-xl font-bold text-[#0B2545] font-serif">Office of the Head Mistress</h2>
+            <p class="text-xs text-[#C59B27] font-bold mt-1 uppercase tracking-wider">MJ SCHOOL, SHAHAPUR</p>
 
-          <div class="mt-5 pt-5 border-t border-slate-200 text-left space-y-3.5">
-            <div class="flex items-start gap-2.5 text-xs text-slate-600">
-              <BookOpen class="w-4 h-4 text-[#C59B27] shrink-0 mt-0.5" />
-              <span>Over two decades of school leadership & curriculum innovation</span>
+            <div class="mt-5">
+              <a
+                href="/admissions/2026/"
+                class="block w-full text-center bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold py-2.5 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors shadow-sm"
+              >
+                Admissions 2026-27 Open
+              </a>
             </div>
-            <div class="flex items-start gap-2.5 text-xs text-slate-600">
-              <Compass class="w-4 h-4 text-[#C59B27] shrink-0 mt-0.5" />
-              <span>Committed to experiential learning & NEP 2020 integration</span>
-            </div>
-          </div>
-
-          <div class="mt-6">
-            <a
-              href="/admissions/2026/"
-              class="block w-full text-center bg-[#0B2545] hover:bg-[#133E6E] text-white font-bold py-2.5 px-4 rounded-lg text-xs uppercase tracking-wider transition-colors shadow-sm"
-            >
-              Admissions 2026-27 Open
-            </a>
           </div>
         </div>
 
         {/* Message Body */}
-        <div class="lg:col-span-8 space-y-6 text-slate-700 leading-relaxed text-sm">
+        <div class="lg:col-span-8 space-y-6 text-slate-700 leading-relaxed text-sm sm:text-base">
           
-          <div class="bg-amber-50/70 border-l-4 border-[#C59B27] p-5 rounded-r-xl">
-            <Quote class="w-8 h-8 text-[#C59B27] mb-2 opacity-80" />
-            <h3 class="text-lg sm:text-xl font-bold font-serif text-[#0B2545]">
-              "Education is not merely the filling of a vessel, but the kindling of an enduring flame."
+          <div class="bg-amber-50/70 border-l-4 border-[#C59B27] p-5 sm:p-6 rounded-r-xl">
+            <p class="text-xs uppercase tracking-wider text-[#C59B27] font-bold mb-1.5 flex items-center gap-1.5">
+              <Quote class="w-4 h-4 text-[#C59B27]" />
+              <span>From the Headmistress’s Desk</span>
+            </p>
+            <h3 class="text-xl sm:text-2xl font-bold font-serif text-[#0B2545] leading-snug">
+              Nurturing Young Minds, Building Bright Futures
             </h3>
           </div>
 
-          <p class="text-base text-slate-800 font-medium">
-            Dear Parents, Guardians, Students, and Well-Wishers,
+          <p class="text-base text-slate-900 font-semibold">
+            Dear Parents and Students,
           </p>
 
           <p>
-            It gives me immense pleasure to welcome you to <strong>MJ School, Shahpur</strong>. At MJ School, education extends far beyond textbooks and formal examinations. We endeavor to create an intellectually stimulating ecosystem where curious minds are encouraged to question, experiment, create, and lead.
+            At MJ School, Shahapur, we believe every child has the potential to learn, grow, and succeed. Our aim is to provide a supportive learning environment where children build strong academic foundations, develop good values, and discover their unique abilities.
           </p>
 
           <p>
-            Our pedagogical philosophy is anchored in the belief that every child possesses innate genius and distinct capabilities. As educators, our sacred responsibility is to provide the fertile ground, technological tools, and values-driven guidance necessary for each student to flourish. Affiliated to the <strong>Central Board of Secondary Education (CBSE)</strong>, our curriculum harmoniously merges academic rigor with emotional intelligence, scientific inquiry, environmental consciousness, and global competencies outlined in the <strong>National Education Policy (NEP 2020)</strong>.
+            We believe that a strong partnership between parents and teachers is essential to every child’s growth. Together, let us help our children become confident, responsible, and compassionate individuals.
           </p>
 
-          <p>
-            A school is only as strong as the partnership between home and classroom. We invite parents to walk alongside us as active collaborators in this inspiring journey of shaping tomorrow's thinkers, changemakers, and ethical leaders.
-          </p>
-
-          <div class="pt-4 border-t border-slate-200">
-            <p class="font-serif font-bold text-base text-[#0B2545]">Head Mistress</p>
-            <p class="text-xs text-slate-500">MJ School, Shahpur</p>
-            <p class="text-xs text-[#C59B27] font-semibold mt-0.5">Central Board of Secondary Education (CBSE)</p>
+          <div class="pt-4 border-t border-slate-200 space-y-1">
+            <p class="font-bold text-slate-900 text-sm sm:text-base">Warm regards,</p>
+            <p class="italic text-slate-700 text-sm sm:text-base">Headmistress</p>
+            <p class="text-xs sm:text-sm text-slate-500 font-medium">MJ School, Shahapur</p>
           </div>
 
         </div>

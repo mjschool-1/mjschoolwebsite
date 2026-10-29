@@ -1,5 +1,4 @@
 import React from 'react';
-import { Quote, User } from 'lucide-react';
 import { CampusInfrastructureFrame } from './CampusInfrastructureFrame';
 
 export interface AboutSchoolSectionProps {
@@ -54,40 +53,59 @@ export const AboutSchoolSection: React.FC<AboutSchoolSectionProps> = ({
 
         </div>
 
-        {/* Head Mistress's Desk Message */}
-        <div id="principal-message" className="bg-[#0B2545] text-white rounded-2xl p-6 sm:p-8 relative overflow-hidden scroll-mt-24 shadow-xl">
-          <div className="absolute top-0 right-0 p-8 text-white/5 pointer-events-none">
-            <Quote className="w-48 h-48 -mr-12 -mt-12" />
-          </div>
+        {/* Head Mistress's Desk Message Panel */}
+        <div
+          id="principal-message"
+          className="bg-[#0B2545] text-white rounded-2xl sm:rounded-3xl relative overflow-hidden scroll-mt-24 shadow-xl border border-slate-700/60 flex flex-col md:flex-row items-stretch"
+        >
+          {/* Left Column: Headmistress Photograph in natural, untinted colors separated by a clean gold border */}
+          <div className="relative w-full md:w-[35%] lg:w-[33%] min-h-[300px] sm:min-h-[350px] md:min-h-[440px] shrink-0 overflow-hidden flex flex-col justify-end border-b border-[#C59B27] md:border-b-0 md:border-r border-[#C59B27]">
+            {/* The Actual Photograph in natural full color - no tint, no gradient overlay, no filter */}
+            <img
+              src="/head-mistress.jpeg"
+              alt="Head Mistress of MJ School, Shahapur"
+              className="absolute inset-0 w-full h-full object-cover object-[30%_15%]"
+              loading="lazy"
+            />
 
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            
-            <div className="md:col-span-4 text-center md:text-left">
-              <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full mx-auto md:mx-0 overflow-hidden border-4 border-[#C59B27] bg-[#133E6E]/60 shadow-lg mb-3 flex items-center justify-center">
-                <User className="w-16 h-16 sm:w-20 sm:h-20 text-white/30" />
-              </div>
-              <h4 className="font-bold text-base text-white">Head Mistress</h4>
-              <p className="text-xs text-[#F6D55C] font-medium">MJ School, Shahapur</p>
-              <p className="text-[10px] text-slate-400 mt-1">National CBSE Best Educator Awardee</p>
-            </div>
-
-            <div className="md:col-span-8 space-y-3">
-              <div className="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded text-xs text-[#F6D55C] font-semibold">
-                <Quote className="w-3 h-3" />
-                <span>From the Head Mistress's Desk</span>
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold font-serif text-white">
-                "Empowering Young Minds to Conquer the Challenges of Tomorrow"
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-                Dear Parents, Students, and Well-Wishers,
-                <br /><br />
-                At MJ School, Shahapur, education extends far beyond textbooks and formal examinations. We endeavor to create an intellectually stimulating ecosystem where curious minds are encouraged to question, experiment, create, and lead. Our faculty members act not merely as instructors, but as compassionate guides who awaken the latent genius inside every child.
-                <br /><br />
-                As we stride confidently into the future, we invite parents to walk alongside us as active partners in this magnificent journey of nurturing tomorrow's thinkers, changemakers, and leaders.
+            {/* Headmistress Title & School Name directly over photograph without any surrounding box */}
+            <div className="relative z-10 p-5 sm:p-6 md:p-6 lg:p-7 select-none">
+              <h4 className="font-bold text-lg sm:text-xl lg:text-2xl text-white font-serif tracking-wide leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                Head Mistress
+              </h4>
+              <p className="text-xs sm:text-sm text-[#F6D55C] font-bold tracking-wider mt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] uppercase">
+                MJ School, Shahapur
               </p>
             </div>
+          </div>
 
+          {/* Right Column: Message Content on Solid Navy Background */}
+          <div className="relative z-10 flex-1 bg-[#0B2545] p-6 sm:p-8 lg:p-10 flex flex-col justify-center space-y-4">
+            <div className="inline-flex items-center gap-1.5 bg-[#C59B27]/15 border border-[#C59B27]/40 px-3 py-1 rounded-full text-xs text-[#F6D55C] font-bold uppercase tracking-wider self-start">
+              <span>From the Headmistress’s Desk</span>
+            </div>
+
+            <h3 className="text-xl sm:text-2xl lg:text-[28px] font-bold font-serif text-white leading-snug">
+              Nurturing Young Minds, Building Bright Futures
+            </h3>
+
+            <div className="space-y-3.5 text-xs sm:text-sm lg:text-[15px] text-slate-200 leading-relaxed pt-1">
+              <p className="font-semibold text-slate-100 text-sm sm:text-base">
+                Dear Parents and Students,
+              </p>
+              <p>
+                At MJ School, Shahapur, we believe every child has the potential to learn, grow, and succeed. Our aim is to provide a supportive learning environment where children build strong academic foundations, develop good values, and discover their unique abilities.
+              </p>
+              <p>
+                We believe that a strong partnership between parents and teachers is essential to every child’s growth. Together, let us help our children become confident, responsible, and compassionate individuals.
+              </p>
+
+              <div className="pt-2 space-y-0.5 text-xs sm:text-sm">
+                <p className="font-bold text-white text-sm sm:text-base">Warm regards,</p>
+                <p className="italic text-slate-200">Headmistress</p>
+                <p className="text-slate-300">MJ School, Shahapur</p>
+              </div>
+            </div>
           </div>
         </div>
 

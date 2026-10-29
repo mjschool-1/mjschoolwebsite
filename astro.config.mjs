@@ -18,5 +18,12 @@ export default defineConfig({
   vite: {
     configFile: false,
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: [
+        'react-easy-crop',
+        'lucide-react',
+        '@supabase/supabase-js',
+      ],
+    },
   },
 });
