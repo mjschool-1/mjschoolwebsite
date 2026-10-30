@@ -60,13 +60,23 @@ export const Logo: React.FC<LogoProps> = ({
             Affiliated to CBSE
           </span>
           {isHeader ? (
-            <span className="text-slate-500 text-[11px] lg:text-[12px] font-medium leading-none mt-1 hidden sm:block tracking-normal">
-              Nurturing Lifelong Learners &amp; Shaping Future Leaders
-            </span>
+            <>
+              <span className="text-slate-500 text-[11px] lg:text-[12px] font-medium leading-none mt-1 hidden sm:block tracking-normal">
+                Nurturing Lifelong Learners &amp; Shaping Future Leaders
+              </span>
+              <span className="text-slate-700 font-semibold tracking-wider text-[10px] min-[375px]:text-[10.5px] sm:text-[11px] lg:text-[11.5px] mt-1 sm:mt-1.5 leading-tight font-sans">
+                UDISE NUMBER : 27214100866
+              </span>
+            </>
           ) : (
-            <span className="text-gray-500 text-[11px] font-medium leading-none mt-0.5 hidden md:block">
-              Nurturing Lifelong Learners &amp; Shaping Future Leaders
-            </span>
+            <>
+              <span className="text-gray-500 text-[11px] font-medium leading-none mt-0.5 hidden md:block">
+                Nurturing Lifelong Learners &amp; Shaping Future Leaders
+              </span>
+              <span className="text-slate-700 font-semibold tracking-wider text-[10px] sm:text-[11px] mt-1 sm:mt-1.5 leading-tight font-sans">
+                UDISE NUMBER : 27214100866
+              </span>
+            </>
           )}
         </div>
       )}

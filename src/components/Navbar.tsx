@@ -392,6 +392,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onSelectNav, pathname }) => {
               <span className="text-[10px] text-[#F6D55C] font-semibold tracking-wide uppercase">
                 CBSE Affiliated • Shahpur
               </span>
+              <span className="text-[9.5px] text-slate-300 font-semibold tracking-wider uppercase mt-0.5 font-sans">
+                UDISE NUMBER : 27214100866
+              </span>
             </div>
           </div>
 
